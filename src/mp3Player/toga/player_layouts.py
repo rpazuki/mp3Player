@@ -26,7 +26,9 @@ log = logging.getLogger(__name__)
 class FilesToolbarComponent(TogaComponent):
     def __init__(self, layout: TogaStackedLayout, **kwargs) -> None:
         icons = Icons.load()
-        icon_style = Pack(width=48, height=48)
+        icon_style = Pack(width=48,
+                          height=46,
+                          padding=2)
         super().__init__(layout, style=Pack(
             direction=ROW, alignment=CENTER, padding=1),
             children=[
@@ -65,7 +67,9 @@ class FilesToolbarComponent(TogaComponent):
 class PlayerDeckComponent(TogaComponent):
     def __init__(self, layout: TogaStackedLayout, **kwargs) -> None:
         icons = Icons.load()
-        icon_style = Pack(width=50, height=48)  # , background_color="#666666")
+        icon_style = Pack(width=50,
+                          height=48,
+                          padding_bottom=4)  # , background_color="#666666")
         buttons_box = toga.Box(style=Pack(direction=ROW, alignment=CENTER),
                                children=[
                                    toga.Button(icon=icons.rewind,

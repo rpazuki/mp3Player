@@ -21,7 +21,7 @@ class TogaApp(TogaMultiLayoutApp):
 
     def __init__(self,
                  formal_name: str,
-                 app_id="com.mp3player"):
+                 app_id="net.pazuki.mp3player"):
 
         self.main_layout = PlayerLayout(self)
         super(TogaApp, self).__init__(init_layout=self.main_layout,

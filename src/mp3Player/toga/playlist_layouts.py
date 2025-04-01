@@ -16,9 +16,13 @@ log = logging.getLogger(__name__)
 class PlaylistToolbarComponent(TogaComponent):
     def __init__(self, layout: TogaStackedLayout, **kwargs) -> None:
         icons = Icons.load()
-        icon_style = Pack(width=48, height=48)
+        icon_style = Pack(width=48,
+                          height=46,
+                          padding=2)
         buttons_box = toga.Box(style=Pack(direction=ROW, alignment=CENTER),
                                children=[
+            toga.Label("Playlists   ",
+                       style=Pack(padding=2, color="#bb0000")),
             toga.Button(icon=icons.cd_case,
                         on_press=self.view_play_deck,
                         style=icon_style),
@@ -36,7 +40,7 @@ class PlaylistToolbarComponent(TogaComponent):
         ])
         edit_box = toga.Box(style=Pack(direction=ROW, alignment=CENTER),
                             children=[
-            toga.TextInput("", readonly=True,),
+            toga.TextInput("", readonly=True, style=Pack(width=200)),
             toga.Button(icon=icons.tick,
                         on_press=self.accept_playlist,
                         enabled=False,
