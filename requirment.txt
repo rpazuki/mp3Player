@@ -1,0 +1,14 @@
+# For Kivy
+#"kivy[base]"
+#"kivy[dev,sdl2,angle,glew]"
+# For Beeware
+briefcase
+# toga
+addict
+numpy
+#python-vlc
+eyed3
+# sudo apt install portaudio19-dev python3-pyaudio
+pyaudio
+pymp3
+pytoml
