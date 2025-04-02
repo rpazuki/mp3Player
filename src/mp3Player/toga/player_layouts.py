@@ -87,7 +87,7 @@ class PlayerDeckComponent(TogaComponent):
         ])
         playing_track_box = toga.Box(style=Pack(direction=ROW, alignment=CENTER),
                                      children=[
-            toga.Button(icon=icons.nosound, enabled=False,),
+            toga.Button(icon=icons.nosound,),
             toga.Label("", style=Pack(padding_left=10,
                                       color="#119900", alignment=CENTER)),
         ])
@@ -475,14 +475,22 @@ class PlayerLayout(TogaStackedLayout):
                                                    PlayerStatus.PLAY)
         # Play the track
         mp3_file = mp3.load(Path(track.path))  # type: ignore
-        self.player_thread = PlayerThread(
-            mp3_file,
-            end_callback=self.play_loop)
-        # The progress bar must be updated by the main loop
+
+        # The play loop must be called by the main loop
         # Otherwise, MacOS will terminate the app
         # (NSInternalInconsistencyException), since the
         # UI element is not updated by the other thread
+        def player_loop_main_thread_callback():
+            def future_callback():
+                self.play_loop()
+            self.ml_app.loop.call_soon_threadsafe(future_callback)
 
+        self.player_thread = PlayerThread(
+            mp3_file,
+            end_callback=player_loop_main_thread_callback)
+
+        # The progress bar must be updated by the main loop
+        # Read the comment above
         def player_progress_main_thread_callback(played_secs, remained_secs):
             def future_callback():
                 self.player_deck.set_playing_progress(played_secs,
