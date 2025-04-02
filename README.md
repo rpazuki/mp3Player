@@ -6,12 +6,32 @@
 
 > An mp3 player with multiple playlists support. This is a multi-platform project that is using [BeeWare](https://beeware.org/) framework.
 
+## installing 
+
+### MacOS
+
+
+```
+brew install cmake
+brew install portaudio
+```
+
+Next, find the 'portaudio' install address by running
+
+```
+brew info portaudio
+```
+and accordingly, replace the <PORTAUDIO-ADDRESS> in below command
+
+```
+export CFLAGS="-I/<PORTAUDIO-ADDRESS>/include/"
+export LDFLAGS="-L/<PORTAUDIO-ADDRESS>/lib/" 
+pip install --global-option='build_ext' --global-option='-I/<PORTAUDIO-ADDRESS>/include' --global-option='-L/<PORTAUDIO-ADDRESS>/lib' -r requirment
+```
 
 ## packaging
 
 ```
-pip install -r requirment.txt
-
 briefcase create
 
 briefcase package
