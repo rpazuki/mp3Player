@@ -6,7 +6,7 @@
 
 > An mp3 player with multiple playlists support. This is a multi-platform project that is using [BeeWare](https://beeware.org/) framework.
 
-## installing 
+## installing
 
 ### MacOS
 
@@ -25,7 +25,7 @@ and accordingly, replace the <PORTAUDIO-ADDRESS> in below command
 
 ```
 export CFLAGS="-I/<PORTAUDIO-ADDRESS>/include/"
-export LDFLAGS="-L/<PORTAUDIO-ADDRESS>/lib/" 
+export LDFLAGS="-L/<PORTAUDIO-ADDRESS>/lib/"
 pip install --global-option='build_ext' --global-option='-I/<PORTAUDIO-ADDRESS>/include' --global-option='-L/<PORTAUDIO-ADDRESS>/lib' -r requirment
 ```
 
@@ -33,6 +33,6 @@ pip install --global-option='build_ext' --global-option='-I/<PORTAUDIO-ADDRESS>/
 
 ```
 briefcase create
-
+briefcase build
 briefcase package
 ```
