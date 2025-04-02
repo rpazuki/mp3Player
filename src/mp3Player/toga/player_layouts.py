@@ -319,7 +319,13 @@ class PlayerLayout(TogaStackedLayout):
             # Get the first playlist name
             # self.playlist_name = self.settings.Playlists[0].name
             self.playlist_name = self.settings.last_playlist
-            self.last_playlist = self.settings.last_playlist
+            try:
+                self.last_playlist = self.settings.find_playlist(
+                    self.playlist_name)
+            except ValueError:
+                self.playlist_name = self.settings.Playlists[0].name
+                self.last_playlist = self.settings.find_playlist(
+                    self.playlist_name)
 
         self.files_list.load_playlist(self.playlist_name)
         return super().on_load()
