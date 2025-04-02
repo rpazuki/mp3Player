@@ -302,9 +302,10 @@ class AbstractApp(ABC, Configurable):
         """Os and Framework-related config (e.g. toga or kivy).
         """
         if Config.log.to_std:
-            std_out_log()
+            std_out_log(log_level=Config.log.log_level)
         if Config.log.to_file:
-            file_out_log(self.data_path / Config.log.file_name)
+            file_out_log(path=self.data_path / Config.log.file_name,
+                         log_level=Config.log.log_level)
         #
         super()._set_config()
 

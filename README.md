@@ -1,8 +1,12 @@
 # mp3Player
 
-[![jhc github](https://img.shields.io/badge/GitHub-rpazuki.svg?style=flat&logo=github)](https://github.com/rpazuki)
+[![rpazuki github](https://img.shields.io/badge/GitHub-rpazuki-181717.svg?style=flat&logo=github)](https://github.com/rpazuki)
 [![python](https://img.shields.io/badge/Python-3.10-3776AB.svg?style=flat&logo=python&logoColor=white)](https://www.python.org)
 [![License: GPLv3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
+### platforms
+![iOS](https://img.shields.io/badge/macOS-999999.svg?style=flat&logo=apple)
+![Ubuntu](https://img.shields.io/badge/Ubuntu-E95420?style=flat&logo=ubuntu&logoColor=white)
 
 > An mp3 player with multiple playlists support. This is a multi-platform project that is using [BeeWare](https://beeware.org/) framework.
 

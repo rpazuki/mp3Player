@@ -11,6 +11,6 @@ if __name__ == "__main__":
         create_toga_app().main_loop()
     except Exception as e:
         print(e)
-        log.exception("Exception in main loop. \n"
-                      f"Exception: {e}"
-                      f"\nTraceback: {e.__traceback__}")
+        log.error("Exception in main loop. \n"
+                  f"Exception: {e}"
+                  f"\nTraceback: {e.__traceback__}")

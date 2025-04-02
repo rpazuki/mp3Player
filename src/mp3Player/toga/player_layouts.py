@@ -87,7 +87,8 @@ class PlayerDeckComponent(TogaComponent):
         ])
         playing_track_box = toga.Box(style=Pack(direction=ROW, alignment=CENTER),
                                      children=[
-            toga.Button(icon=icons.nosound,),
+            toga.Button(icon=icons.nosound,
+                        on_press=self.play),
             toga.Label("", style=Pack(padding_left=10,
                                       color="#119900", alignment=CENTER)),
         ])
