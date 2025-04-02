@@ -478,8 +478,16 @@ class PlayerLayout(TogaStackedLayout):
         self.player_thread = PlayerThread(
             mp3_file,
             end_callback=self.play_loop)
+        # self.ml_app.loop
+
+        def player_progress_main_thread_callback(played_secs, remained_secs):
+            def future_callback():
+                self.player_deck.set_playing_progress(played_secs,
+                                                      remained_secs)
+            self.ml_app.loop.call_soon_threadsafe(future_callback)
+
         self.progress_thread = ProgressThread(
-            self.player_deck.set_playing_progress)
+            player_progress_main_thread_callback)
         PlayingThreadGlobals.status = PlayerStatus.PLAY
         self.player_thread.start()
         self.progress_thread.start()
