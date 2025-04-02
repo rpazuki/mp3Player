@@ -7,4 +7,10 @@ log = logging.getLogger(__name__)
 
 if __name__ == "__main__":
     log.info("main is called.")
-    create_toga_app().main_loop()
+    try:
+        create_toga_app().main_loop()
+    except Exception as e:
+        print(e)
+        log.exception("Exception in main loop. \n"
+                      f"Exception: {e}"
+                      f"\nTraceback: {e.__traceback__}")
