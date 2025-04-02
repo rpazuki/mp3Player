@@ -478,7 +478,10 @@ class PlayerLayout(TogaStackedLayout):
         self.player_thread = PlayerThread(
             mp3_file,
             end_callback=self.play_loop)
-        # self.ml_app.loop
+        # The progress bar must be updated by the main loop
+        # Otherwise, MacOS will terminate the app
+        # (NSInternalInconsistencyException), since the
+        # UI element is not updated by the other thread
 
         def player_progress_main_thread_callback(played_secs, remained_secs):
             def future_callback():
@@ -496,17 +499,7 @@ class PlayerLayout(TogaStackedLayout):
         PlayingThreadGlobals.status = PlayerStatus.STOP
         # Get the selected track
 
-        if self.last_played is not None:
-            track = self.last_played
-            playlist_name = self.last_playlist
-        else:
-            _, playlist_name, track = self.files_list.selected_track()
-
-        # Find the next track in the playlist
-        track = self.settings.find_next_track(
-            playlist_name, track)  # type: ignore
-        # Play the track
-        self.play_selected_track(track, playlist_name)  # type: ignore
+        self.next()
 
     def on_end(self):
         PlayingThreadGlobals.status = PlayerStatus.STOP
