@@ -40,7 +40,7 @@ class PlaylistToolbarComponent(TogaComponent):
         ])
         edit_box = toga.Box(style=Pack(direction=ROW, alignment=CENTER),
                             children=[
-            toga.TextInput("", readonly=True, style=Pack(width=200)),
+            toga.TextInput("", style=Pack(width=200)),
             toga.Button(icon=icons.tick,
                         on_press=self.accept_playlist,
                         enabled=False,
@@ -51,8 +51,8 @@ class PlaylistToolbarComponent(TogaComponent):
                         style=icon_style),
         ]
         )
-        self.btn_remove_playlist = buttons_box.children[2]  # type: ignore
-        self.btn_edit_playlist = buttons_box.children[3]  # type: ignore
+        self.btn_remove_playlist = buttons_box.children[3]  # type: ignore
+        self.btn_edit_playlist = buttons_box.children[4]  # type: ignore
 
         self.playlist_textbox = edit_box.children[0]  # type: ignore
         self.btn_ok = edit_box.children[1]  # type: ignore
@@ -67,15 +67,9 @@ class PlaylistToolbarComponent(TogaComponent):
                 ]),
         ])
 
-    def enable(self, flg):
-        if flg:
-            self.btn_ok.enabled = True
-            self.btn_cancel.enabled = True
-            self.playlist_textbox.readonly = False
-        else:
-            self.btn_ok.enabled = False
-            self.btn_cancel.enabled = False
-            self.playlist_textbox.readonly = True
+    def enable(self, flg: bool):
+        self.btn_ok.enabled = flg
+        self.btn_cancel.enabled = flg
 
     def reset(self):
         self.enable(False)
@@ -84,18 +78,15 @@ class PlaylistToolbarComponent(TogaComponent):
         self.btn_edit_playlist.enabled = False
 
     def view_play_deck(self, widget):
-        tree = self.parent_layout.playlists_tree  # type: ignore
-        if tree.playlists_list.selection is None:  # type: ignore
-            return
-        # Get the selected playlist
-        # playlist_name = self.playlist_textbox.value
-        playlist_name = tree.playlists_list.selection.name  # type: ignore
-        self.parent_layout.ml_app.show_main(playlist_name)  # type: ignore
+        self.parent_layout.view_play_deck()  # type: ignore
 
     def add_playlist(self, widget):
-        self.editing = False
+        playlist_name = self.playlist_textbox.value
+        if playlist_name == "":
+            return
+        self.parent_layout.add_playlist(playlist_name)  # type: ignore
+        self.parent_layout[PlaylistsListComponent].load_playlists()
         self.playlist_textbox.value = ""
-        self.enable(True)
 
     def remove_playlist(self, widget):
         self.enable(False)
@@ -107,7 +98,6 @@ class PlaylistToolbarComponent(TogaComponent):
         self.parent_layout[PlaylistsListComponent].load_playlists()
 
     def edit_playlist(self, widget):
-        self.editing = True
         self.enable(True)
 
     def accept_playlist(self, widget):
@@ -115,10 +105,7 @@ class PlaylistToolbarComponent(TogaComponent):
         playlist_name = self.playlist_textbox.value
         if playlist_name == "":
             return
-        if self.editing:
-            self.parent_layout.edit_playlist(playlist_name)  # type: ignore
-        else:  # adding
-            self.parent_layout.add_playlist(playlist_name)  # type: ignore
+        self.parent_layout.edit_playlist(playlist_name)  # type: ignore
         self.parent_layout[PlaylistsListComponent].load_playlists()
 
     def reject_playlist(self, widget):
@@ -181,6 +168,27 @@ class PlaylistLayout(TogaStackedLayout):
                          PlaylistToolbarComponent,
                          PlaylistsListComponent)
 
+        self.message_dialog = toga.InfoDialog(
+            "Alert",
+            ""
+        )
+
+    def show_dialog(self,
+                    message: str,
+                    title: str = "Alert",
+                    dialog_type=toga.InfoDialog,
+                    dialog_callback=None):
+        dialog = dialog_type(title=title,
+                             message=message)
+
+        task = asyncio.create_task(
+            self.ml_app.main_window.dialog(dialog))  # type: ignore
+
+        def dummy(task): return None
+        if dialog_callback is None:
+            dialog_callback = dummy
+        task.add_done_callback(dialog_callback)
+
     @property
     def toolbar(self) -> PlaylistToolbarComponent:
         return self[PlaylistToolbarComponent]
@@ -199,23 +207,37 @@ class PlaylistLayout(TogaStackedLayout):
         self.toolbar.reset()
         return super().on_load()
 
+    def view_play_deck(self):
+        tree = self.playlists_tree  # type: ignore
+        if tree.playlists_list.selection is None:  # type: ignore
+            self.show_dialog(
+                title="Alert",
+                message="Please select a playlist for playing.",
+                dialog_type=toga.InfoDialog  # type: ignore
+            )
+            return
+        # Get the selected playlist
+        # playlist_name = self.playlist_textbox.value
+        playlist_name = tree.playlists_list.selection.name  # type: ignore
+        self.ml_app.show_main(playlist_name)  # type: ignore
+
     def add_playlist(self, playlist_name):
         # Save the settings
         if not self.settings.has_playlist(playlist_name):
             self.settings.add_playlist(playlist_name)
             self.settings.save()
+        else:
+            self.show_dialog(
+                title="Alert",
+                message=f"A playlist with the same name '{playlist_name}'"
+                " already exists.",
+                dialog_type=toga.InfoDialog  # type: ignore
+            )
 
     def remove_playlist(self, playlist_name):
         if self.settings.has_playlist(playlist_name):
             playlist = self.settings.find_playlist(playlist_name)
             if len(playlist.tracks) > 0:
-                confirm = toga.ConfirmDialog(
-                    "Delete",
-                    "Are you sure you want to delete the playlist with saved track?"
-                )
-                task = asyncio.create_task(
-                    self.ml_app.main_window.dialog(confirm))  # type: ignore
-
                 def callback(task):
                     if task.result():
                         self.settings.remove_playlist(playlist_name,
@@ -223,7 +245,12 @@ class PlaylistLayout(TogaStackedLayout):
                         self.settings.save()
                         self[PlaylistsListComponent].load_playlists()
 
-                task.add_done_callback(callback)
+                self.show_dialog(
+                    title="Delete",
+                    message="Are you sure you want to delete the playlist with saved track?",
+                    dialog_type=toga.ConfirmDialog,  # type: ignore
+                    dialog_callback=callback
+                )
                 return
 
             self.settings.remove_playlist(playlist_name,
@@ -232,8 +259,22 @@ class PlaylistLayout(TogaStackedLayout):
 
     def edit_playlist(self, new_playlist_name):
         if not self.settings.has_playlist(new_playlist_name):
+            if self.playlists_tree.playlists_list.selection is None:
+                self.show_dialog(
+                    title="Alert",
+                    message="Please select a playlist first to edit.",
+                    dialog_type=toga.InfoDialog  # type: ignore
+                )
+                return
             playlist_name = self.playlists_tree.playlists_list.selection.name  # type: ignore
             self.settings.edit_playlist(playlist_name,
                                         new_playlist_name,
                                         self.ml_app.data_path)
             self.settings.save()
+        else:
+            self.show_dialog(
+                title="Alert",
+                message=f"A playlist with the same name '{new_playlist_name}'"
+                " already exists.",
+                dialog_type=toga.InfoDialog  # type: ignore
+            )

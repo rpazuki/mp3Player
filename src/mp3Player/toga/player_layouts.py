@@ -317,7 +317,10 @@ class PlayerLayout(TogaStackedLayout):
     def on_load(self):
         if self.playlist_name == "":
             # Get the first playlist name
-            self.playlist_name = self.settings.Playlists[0].name
+            # self.playlist_name = self.settings.Playlists[0].name
+            self.playlist_name = self.settings.last_playlist
+            self.last_playlist = self.settings.last_playlist
+
         self.files_list.load_playlist(self.playlist_name)
         return super().on_load()
 
@@ -499,4 +502,5 @@ class PlayerLayout(TogaStackedLayout):
 
     def on_end(self):
         PlayingThreadGlobals.status = PlayerStatus.STOP
+        self.settings.last_playlist = self.last_playlist
         return super().on_end()

@@ -100,7 +100,10 @@ class Settings(DefaultDict):
                             {'name': 'Playlist 1',
                              'tracks': []
                              }))
-                    Settings.__is_changed = False
+                        Settings.__instance.last_playlist = 'Playlist 1'
+                        Settings.__is_changed = True
+                    else:
+                        Settings.__is_changed = False
             except FileNotFoundError:
                 Path(data_path).mkdir(parents=True, exist_ok=True)
                 ###################################
@@ -109,7 +112,8 @@ class Settings(DefaultDict):
                                 {'name': 'Playlist 1',
                                  'tracks': []
                                  },
-                                ]
+                                ],
+                                'last_playlist': 'Playlist 1',
                                 }
                 with open(data_path / Settings.FILE_NAME, "w") as f:
                     json.dump(default_conf, f, indent=4)
