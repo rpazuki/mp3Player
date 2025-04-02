@@ -8,6 +8,14 @@
 
 ## installing
 
+### Linux
+
+
+```
+sudo apt install cmake
+sudo apt install portaudio19-dev python3-pyaudio
+```
+
 ### MacOS
 
 
