@@ -188,7 +188,8 @@ class PlayerDeckComponent(TogaComponent):
 class FilesListComponent(TogaComponent):
     def __init__(self, layout: TogaStackedLayout, **kwargs) -> None:
         self.__playlists = toga.DetailedList(accessors=("name", "length", "picture"),
-                                             style=Pack(flex=1)
+                                             style=Pack(flex=1),
+                                             on_select=self.on_select,
                                              )
         super().__init__(layout, style=Pack(padding=10, flex=1),
                          children=[self.__playlists])
@@ -202,6 +203,9 @@ class FilesListComponent(TogaComponent):
         # Settings
         self.settings = self.ml_app.settings
         #
+
+    def on_select(self, widget):
+        self.parent_layout.select_track()  # type: ignore
 
     def load_playlist(self, playlist_name=""):
         if playlist_name == "":
@@ -414,6 +418,14 @@ class PlayerLayout(TogaStackedLayout):
                                  playlist_name,
                                  next_index)  # type: ignore
 
+    def select_track(self):
+        # Since we cannot catch double click, we only let
+        # the user to select aother track after it starts playing
+        # TODO: must suport it only on linux and macOs and windows
+        if PlayingThreadGlobals.status == PlayerStatus.STOP:
+            return
+        self.play()
+
     def play(self):
         # Get the selected track
         node, playlist, track = self.files_list.selected_track()
@@ -519,4 +531,5 @@ class PlayerLayout(TogaStackedLayout):
     def on_end(self):
         PlayingThreadGlobals.status = PlayerStatus.STOP
         self.settings.last_playlist = self.last_playlist
+        self.settings.last_track = self.last_played
         return super().on_end()
