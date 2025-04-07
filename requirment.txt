@@ -12,3 +12,4 @@ eyed3
 pyaudio
 pymp3
 pytoml
+rubicon-objc

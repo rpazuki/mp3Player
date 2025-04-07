@@ -1,9 +1,9 @@
 # This project was generated with 0.3.22 using template: https://github.com/beeware/briefcase-template@v0.3.22
 [tool.briefcase]
 project_name = "mp3Player"
-bundle = "net.pazuki.mp3Player"
+bundle = "com.mp3Player"
 version = "0.0.1"
-url = "https://pazuki.net/mp3Player"
+url = "https://mp3Player.com/mp3Player"
 license.file = "LICENSE.txt"
 author = "Roozbeh H. Pazuki"
 author_email = "rpazuki@gmail.com"
@@ -26,12 +26,10 @@ test_sources = [
 requires = [
    "addict",
    "eyed3",
-   "fontawesome",
-   "pyaudio",
-   "pymp3",
-   "pytoml",
    "numpy",
-   #"python-vlc",
+   "pytoml",
+   "pymp3",
+
 ]
 test_requires = [
     "pytest",
@@ -43,6 +41,7 @@ universal_build = true
 requires = [
     "toga-cocoa~=0.4.7",
     "std-nslog~=1.0.3",
+    "pyaudio",
 ]
 # An override of the common definition for camera permissions
 permission.camera = "This macOS app uses the camera."
@@ -67,6 +66,7 @@ info_plist_extra = """
 requires = [
     "PyGObject==3.50.0",
     "toga-gtk~=0.4.7",
+    "pyaudio",
 ]
 
 [tool.briefcase.app.mp3Player.linux.system.debian]
@@ -183,6 +183,7 @@ flatpak_sdk = "org.gnome.Sdk"
 [tool.briefcase.app.mp3Player.windows]
 requires = [
     "toga-winforms~=0.4.7",
+    "pyaudio",
 ]
 ##################################################################
 ##################################################################
@@ -191,6 +192,7 @@ requires = [
 requires = [
     "toga-iOS~=0.4.7",
     "std-nslog~=1.0.3",
+    "rubicon-objc",
 ]
 requirement_installer_args = ["--find-links", "/Users/rp/ios_libs/mobile-forge/dist/"]
 permission.camera = "This iOS app uses the camera"

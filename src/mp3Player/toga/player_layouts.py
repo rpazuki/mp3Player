@@ -9,13 +9,7 @@ from toga.style import Pack
 from toga.style.pack import CENTER, COLUMN, ROW  # type: ignore
 
 from mp3Player.core import Event, EventType, ServiceRegistry
-from mp3Player.services import (
-    PlayerStatus,
-    PlayerThread,
-    PlayingThreadGlobals,
-    ProgressThread,
-    mp3,
-)
+from mp3Player.services import PlayerStatus, PlayingThreadGlobals, ProgressThread, mp3
 from mp3Player.toga import TogaComponent, TogaMultiLayoutApp, TogaStackedLayout
 from mp3Player.toga.icons import Icons
 from mp3Player.toga.services.io import FileOpenOpenCV
@@ -42,8 +36,23 @@ class FilesToolbarComponent(TogaComponent):
                             on_press=self.remove_file,
                             style=icon_style),
         ])
+        self.add_btn = self.children[1]
 
-    def on_common_config(self):
+    def on_ios_config(self):
+        # def on_dispatch(widget):
+        #     self.parent_layout.add_files([])  # type: ignore
+        # self.add_btn.on_press = on_dispatch
+        ##
+        from mp3Player.services.open_file_ios import IOSFileOpen
+        registry = ServiceRegistry()
+        registry.bind_event(
+            Event("add_file",
+                  EventType.ON_PRESS,
+                  IOSFileOpen(),
+                  service_callback=self.add_files)
+        )
+
+    def on_linux_config(self):
         ##
         registry = ServiceRegistry()
         registry.bind_event(
@@ -52,7 +61,26 @@ class FilesToolbarComponent(TogaComponent):
                   FileOpenOpenCV(),
                   service_callback=self.add_files)
         )
-        #
+
+    def on_windows_config(self):
+        ##
+        registry = ServiceRegistry()
+        registry.bind_event(
+            Event("add_file",
+                  EventType.ON_PRESS,
+                  FileOpenOpenCV(),
+                  service_callback=self.add_files)
+        )
+
+    def on_darwin_config(self):
+        ##
+        registry = ServiceRegistry()
+        registry.bind_event(
+            Event("add_file",
+                  EventType.ON_PRESS,
+                  FileOpenOpenCV(),
+                  service_callback=self.add_files)
+        )
 
     def view_playlsits(self, widget):
         self.parent_layout.ml_app.show_playlists()  # type: ignore
@@ -188,7 +216,8 @@ class PlayerDeckComponent(TogaComponent):
 class FilesListComponent(TogaComponent):
     def __init__(self, layout: TogaStackedLayout, **kwargs) -> None:
         self.__playlists = toga.DetailedList(accessors=("name", "length", "picture"),
-                                             style=Pack(flex=1)
+                                             style=Pack(flex=1),
+                                             on_select=self.on_select,
                                              )
         super().__init__(layout, style=Pack(padding=10, flex=1),
                          children=[self.__playlists])
@@ -202,6 +231,9 @@ class FilesListComponent(TogaComponent):
         # Settings
         self.settings = self.ml_app.settings
         #
+
+    def on_select(self, widget):
+        self.parent_layout.select_track()  # type: ignore
 
     def load_playlist(self, playlist_name=""):
         if playlist_name == "":
@@ -297,6 +329,7 @@ class PlayerLayout(TogaStackedLayout):
                          PlayerDeckComponent)
 
         self.player_thread = None
+        self.player_thread_factory = None
         self.last_played = None
         self.last_playlist = None
         self.last_played_track_index = -1
@@ -315,6 +348,33 @@ class PlayerLayout(TogaStackedLayout):
         # Settings
         self.settings = self.ml_app.settings
 
+    def player_factory(self, mp3_file, end_callback):
+        from mp3Player.services import PlayerThread
+        return PlayerThread(
+            mp3_file,
+            end_callback)
+
+    def ios_player_factory(self, mp3_file, end_callback):
+        from mp3Player.services import IOSPlayerThread
+        return IOSPlayerThread(
+            mp3_file,
+            end_callback)
+
+    def on_ios_config(self):
+        self.player_thread_factory = self.ios_player_factory
+
+    def on_ipados_config(self):
+        self.player_thread_factory = self.ios_player_factory
+
+    def on_linux_config(self):
+        self.player_thread_factory = self.player_factory
+
+    def on_windows_config(self):
+        self.player_thread_factory = self.player_factory
+
+    def on_darwin_config(self):
+        self.player_thread_factory = self.player_factory
+
     def on_load(self):
         if self.playlist_name == "":
             # Get the first playlist name
@@ -332,8 +392,12 @@ class PlayerLayout(TogaStackedLayout):
         return super().on_load()
 
     def add_files(self, paths):
+        # if len(paths) == 0:
+        #     paths = [Icons.load().mp3_sample,
+        #              Icons.load().mp3_sample_2,]
+
         for path in paths:
-            new_mp3 = mp3.load(path)
+            new_mp3 = mp3.load(path)  # type: ignore
             # Check if the track is already in the playlist
             # and copy the mp3 file to the playlist directory
             # only if it is not already there
@@ -414,6 +478,14 @@ class PlayerLayout(TogaStackedLayout):
                                  playlist_name,
                                  next_index)  # type: ignore
 
+    def select_track(self):
+        # Since we cannot catch double click, we only let
+        # the user to select aother track after it starts playing
+        # TODO: must suport it only on linux and macOs and windows
+        if PlayingThreadGlobals.status == PlayerStatus.STOP:
+            return
+        self.play()
+
     def play(self):
         # Get the selected track
         node, playlist, track = self.files_list.selected_track()
@@ -492,9 +564,9 @@ class PlayerLayout(TogaStackedLayout):
                 self.play_loop()
             self.ml_app.loop.call_soon_threadsafe(future_callback)
 
-        self.player_thread = PlayerThread(
+        self.player_thread = self.player_thread_factory(
             mp3_file,
-            end_callback=player_loop_main_thread_callback)
+            end_callback=player_loop_main_thread_callback)  # type: ignore
 
         # The progress bar must be updated by the main loop
         # Read the comment above
@@ -519,4 +591,5 @@ class PlayerLayout(TogaStackedLayout):
     def on_end(self):
         PlayingThreadGlobals.status = PlayerStatus.STOP
         self.settings.last_playlist = self.last_playlist
+        self.settings.last_track = self.last_played
         return super().on_end()

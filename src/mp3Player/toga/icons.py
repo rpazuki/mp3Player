@@ -42,6 +42,9 @@ class Icons:
     trash = None
     wishlist_add = None
 
+    mp3_sample = None
+    mp3_sample_2 = None
+
     @staticmethod
     def load():
         """Load the icons from the data path."""
@@ -103,5 +106,8 @@ class Icons:
                 Icons._data_path / "Trash.32.png")
             Icons._instance.wishlist_add = toga.Icon(
                 Icons._data_path / "Wishlist_add.32.png")
+            #
+            Icons._instance.mp3_sample = Icons._data_path / "file_example_MP3_700KB.mp3"
+            Icons._instance.mp3_sample_2 = Icons._data_path / "sample-15s.mp3"
 
         return Icons._instance
