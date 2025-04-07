@@ -63,12 +63,16 @@ class DocumentPickerDelegate(NSObject,  # type: ignore
 
 
 class IOSFileOpen(core.AsyncService):
-    def __init__(self) -> None:
+    def __init__(self,
+                 document_types: list[str] = ["UTTypeMP3"],
+                 allowsMultipleSelection: bool = True) -> None:
         super().__init__()
         # IMPORTANT: the delegate must be create and store here
         # because the delegate is a weak reference
         # and can be deleted without any reference in Python side
         self.delegate = DocumentPickerDelegate.alloc().init_()
+        self.document_types = document_types
+        self.allowsMultipleSelection = allowsMultipleSelection
 
     @safe_async_call(log)
     async def handle_event(self,
@@ -76,14 +80,16 @@ class IOSFileOpen(core.AsyncService):
                            app,
                            service_callback,
                            *args, **kwargs):
-
+        if service_callback is None:
+            raise ValueError("service_callback must be provided")
         libcf = load_library("UniformTypeIdentifiers")
         # You can specify other UTIs if needed
-        document_types = [objc_const(libcf, "UTTypeMP3")]
+        document_types = [objc_const(libcf, item)
+                          for item in self.document_types]
         picker = UIDocumentPickerViewController.alloc()  # type: ignore
         picker = picker.initForOpeningContentTypes_(
             document_types)
-        picker.allowsMultipleSelection = True
+        picker.allowsMultipleSelection = self.allowsMultipleSelection
 
         def local_callback(fnames_c: objc_id) -> None:
             # convert the NSArray to a Python list
@@ -94,7 +100,11 @@ class IOSFileOpen(core.AsyncService):
                 path_str: str = py_from_ns(item.path)  # type: ignore
                 # Convert to Path object
                 fnames.append(Path(path_str))
-            service_callback(fnames)
+            if self.allowsMultipleSelection:
+                service_callback(fnames)
+            else:
+                if len(fnames) > 0:
+                    service_callback(fnames[0])
         # Set the service callback
         self.delegate.set_serviceCallback(local_callback)  # type: ignore
         # Set the delegate
