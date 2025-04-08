@@ -73,6 +73,7 @@ class IOSFileOpen(core.AsyncService):
         self.delegate = DocumentPickerDelegate.alloc().init_()
         self.document_types = document_types
         self.allowsMultipleSelection = allowsMultipleSelection
+        self.libcf = load_library("UniformTypeIdentifiers")
 
     @safe_async_call(log)
     async def handle_event(self,
@@ -82,9 +83,9 @@ class IOSFileOpen(core.AsyncService):
                            *args, **kwargs):
         if service_callback is None:
             raise ValueError("service_callback must be provided")
-        libcf = load_library("UniformTypeIdentifiers")
+
         # You can specify other UTIs if needed
-        document_types = [objc_const(libcf, item)
+        document_types = [objc_const(self.libcf, item)
                           for item in self.document_types]
         picker = UIDocumentPickerViewController.alloc()  # type: ignore
         picker = picker.initForOpeningContentTypes_(
