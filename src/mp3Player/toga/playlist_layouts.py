@@ -23,7 +23,7 @@ class PlaylistToolbarComponent(TogaComponent):
                                children=[
             toga.Label("Playlists   ",
                        style=Pack(padding=2, color="#bb0000")),
-            toga.Button(icon=icons.cd_case,
+            toga.Button(icon=icons.mp3_player,
                         on_press=self.view_play_deck,
                         style=icon_style),
             toga.Button(icon=icons.report_add,
@@ -139,7 +139,7 @@ class PlaylistsListComponent(TogaComponent):
         self.playlists_list.data.clear()
         for playlist in self.settings.Playlists:
             self.playlists_list.data.append({
-                "picture": Icons.load().column,
+                "picture": Icons.load().report,
                 "name": playlist.name,
                 "file_number": len(playlist.tracks),
             })
@@ -153,7 +153,7 @@ class PlaylistsListComponent(TogaComponent):
 
     def add_playlist_to_tree(self, playlist_name):
         self.playlists_list.data.append({
-            "picture": Icons.load().column,
+            "picture": Icons.load().report,
             "name": playlist_name,
             "file_number": 0
         })

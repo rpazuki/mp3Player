@@ -1,10 +1,10 @@
 # This project was generated with 0.3.22 using template: https://github.com/beeware/briefcase-template@v0.3.22
 [tool.briefcase]
 project_name = "mp3Player"
-bundle = "com.mp3Player"
+bundle = "net.pazuki.mp3Player"
 version = "0.0.1"
-url = "https://mp3Player.com/mp3Player"
-license.file = "LICENSE.txt"
+url = "https://pazuki.net/mp3Player"
+license.file = "LICENSE"
 author = "Roozbeh H. Pazuki"
 author_email = "rpazuki@gmail.com"
 
@@ -59,6 +59,10 @@ info_plist_extra = """
 	<string>This iOS app uses photos</string>
     <key>NSPhotoLibraryAddUsageDescription</key>
 	<string>This iOS app uses photos</string>
+    <key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 """
 ##################################################################
 ##################################################################
@@ -194,23 +198,9 @@ requires = [
     "std-nslog~=1.0.3",
     "rubicon-objc",
 ]
-requirement_installer_args = ["--find-links", "/Users/rp/ios_libs/mobile-forge/dist/"]
-permission.camera = "This iOS app uses the camera"
-permission.NSCameraUsageDescription = "This iOS app uses the camera"
-pernision.NSPhotoLibraryAddUsageDescription = "This iOS app uses photos"
-
-info_plist_extra = """
-	<key>NSCameraUsageDescription</key>
-	<string>This iOS app uses the camera</string>
-    <key>NSPhotoLibraryUsageDescription</key>
-    <string>This app requires access to the photo library.</string>
-    <key>NSPhotoLibraryAddUsageDescription</key>
-	<string>This iOS app uses photos</string>
-    <key>AVCaptureVideoDataOutput</key>
-	<string>This iOS app uses the camera</string>
-    <key>AVCapturePhotoOutput</key>
-	<string>This iOS app uses photos</string>
-"""
+requirement_installer_args = ["--find-links", "/Users/roozbeh/ios_libs/mobile-forge/dist/"]
+[tool.briefcase.app.mp3Player.iOS.info]
+UIBackgroundModes =  ["audio"]
 ##################################################################
 ##################################################################
 [tool.briefcase.app.mp3Player.android]

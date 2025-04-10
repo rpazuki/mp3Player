@@ -21,12 +21,22 @@ class mp3:
             audiofile.initTag()  # type: ignore
         return mp3(audiofile, data_path)
 
-    def copy_to(self, dest_path: Path) -> None:
-        """Copy mp3 file to the destination path."""
+    def copy_to(self, dest_path: Path, delete_original:bool = False) -> None:
+        """Copy mp3 file to the destination path.
+        
+           Parameters:
+           ___________
+           delete_original: bool = False
+               When it is true, the function acts like a move command.
+        """
         dest_path.parent.mkdir(parents=True, exist_ok=True)
-        f_src = open(self.data_path, 'rb')
-        f_dest = open(dest_path, 'wb')
-        shutil.copyfileobj(f_src, f_dest)
+        
+        if delete_original:
+            shutil.move(self.data_path, dest_path)
+        else:
+            f_src = open(self.data_path, 'rb')
+            f_dest = open(dest_path, 'wb')
+            shutil.copyfileobj(f_src, f_dest)
         self._data_path = dest_path
 
     def delete(self) -> None:
