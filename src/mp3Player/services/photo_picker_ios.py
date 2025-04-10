@@ -130,9 +130,9 @@ class IOSPhotoPicker(core.AsyncService):
                             file = value
                     if path_str != "":
                         from PIL import Image
-                        file.startAccessingSecurityScopedResource()
+                        # file.startAccessingSecurityScopedResource()
                         img = Image.open(Path(path_str))
-                        file.stopAccessingSecurityScopedResource()
+                        # file.stopAccessingSecurityScopedResource()
                         service_callback(img)
                         return
 
