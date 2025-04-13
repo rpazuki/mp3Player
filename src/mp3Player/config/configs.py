@@ -100,7 +100,7 @@ class Settings(DefaultDict):
                             {'name': 'Playlist 1',
                              'tracks': []
                              }))
-                        Settings.__instance.last_playlist = 'Playlist 1'
+                        Settings.__instance._last_playlist = 'Playlist 1'
                         Settings.__is_changed = True
                     else:
                         Settings.__is_changed = False
@@ -113,7 +113,7 @@ class Settings(DefaultDict):
                                  'tracks': []
                                  },
                                 ],
-                                'last_playlist': 'Playlist 1',
+                                'last_playlist_private': 'Playlist 1',
                                 }
                 with open(data_path / Settings.FILE_NAME, "w") as f:
                     json.dump(default_conf, f, indent=4)
@@ -150,7 +150,7 @@ class Settings(DefaultDict):
                      if playlist.name == name]
         return len(playlists) > 0
 
-    def find_playlist(self, name: str):
+    def find_playlist(self, name: str | None) -> Dict:
         """Find playlist by its name.
 
         Parameters
@@ -336,6 +336,37 @@ class Settings(DefaultDict):
         if os.path.exists(dir_path):
             # Remove the directory and its contents
             shutil.rmtree(dir_path)
+        Settings.__is_changed = True
+
+    def get_last_playlist(self) -> str:
+        """Return the last playlist name.
+
+        Returns
+        -------
+        str
+            The last playlist name.
+        """
+        ret = self.last_playlist_private
+        if ret == "" or ret == {}:
+            if len(self.Playlists) == 0:
+                # If the attribute is not set, return the default value
+                self.last_playlist_private = "Playlist 1"
+                ret = "Playlist 1"
+            else:
+                # If the attribute is not set, return the default value
+                self.last_playlist_private = self.Playlists[0].name
+                ret = self.Playlists[0].name
+        return ret
+
+    def set_last_playlist(self, name: str):
+        """Set the last playlist name.
+
+        Parameters
+        ----------
+        name : str
+            The name of the playlist to set as last.
+        """
+        self.last_playlist_private = name
         Settings.__is_changed = True
 
 

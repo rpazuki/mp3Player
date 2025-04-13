@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 
@@ -5,9 +7,11 @@ import toga
 
 # , silence_crossed_events
 from toga.sources import Node
+from toga.sources import Row as Source_ROW
 from toga.style import Pack
 from toga.style.pack import CENTER, COLUMN, ROW  # type: ignore
 
+from mp3Player.config import Dict
 from mp3Player.core import Event, EventType, ServiceRegistry
 from mp3Player.services import PlayerStatus, PlayingThreadGlobals, ProgressThread, mp3
 from mp3Player.toga import TogaComponent, TogaMultiLayoutApp, TogaStackedLayout
@@ -52,6 +56,7 @@ class FilesToolbarComponent(TogaComponent):
                   IOSFileOpen(self.ml_app.data_path),
                   service_callback=self.add_files_ios)
         )
+
     def on_ipados_config(self):
         # def on_dispatch(widget):
         #     self.parent_layout.add_files([])  # type: ignore
@@ -65,6 +70,10 @@ class FilesToolbarComponent(TogaComponent):
                   IOSFileOpen(self.ml_app.data_path),
                   service_callback=self.add_files_ios)
         )
+
+    @property
+    def parent_layout(self) -> PlayerLayout:
+        return self._layout  # type: ignore
 
     def on_linux_config(self):
         ##
@@ -99,14 +108,13 @@ class FilesToolbarComponent(TogaComponent):
     def view_playlsits(self, widget):
         self.parent_layout.ml_app.show_playlists()  # type: ignore
 
-    # def pre_add_file(self, widget):
-    #     PlayingThreadGlobals.status = PlayerStatus.STOP
-
     def add_files(self, paths):
-        self.parent_layout.add_files(paths, delete_original=False)  # type: ignore
+        self.parent_layout.add_files(
+            paths, delete_original=False)  # type: ignore
 
     def add_files_ios(self, paths):
-        self.parent_layout.add_files(paths, delete_original=True)  # type: ignore
+        self.parent_layout.add_files(
+            paths, delete_original=True)  # type: ignore
 
     def remove_file(self, widget):
         self.parent_layout.remove_file()  # type: ignore
@@ -169,15 +177,35 @@ class PlayerDeckComponent(TogaComponent):
         self.playing_progress = playing_progress_box.children[1]
         self.lb_playing_remain = playing_progress_box.children[2]
 
+    def on_ios_config(self):
+        from mp3Player.services.players_ios import RemoteCommandCenter
+        center = RemoteCommandCenter.shared_instance()
+        # None will pass as a widget
+        center.play_command(self.play, None)
+        center.pause_command(self.play, None)
+        center.stop_command(self.stop, None)
+        center.next_command(self.next, None)
+        center.previous_command(self.previous, None)
+
+    def on_ipados_config(self):
+        from mp3Player.services.players_ios import RemoteCommandCenter
+        center = RemoteCommandCenter.shared_instance()
+        # None will pass as a widget
+        center.play_command(self.play, None)
+        center.pause_command(self.play, None)
+        center.stop_command(self.stop, None)
+        center.next_command(self.next, None)
+        center.previous_command(self.previous, None)
+
     def update_player_deck_status(self,
                                   track_name: str,
                                   player_status: PlayerStatus):
         max_width = self.ml_app.main_window.size.width
         char_size = 10
-        l = int(max_width / char_size) - 3
-        
-        if l <= len(track_name):
-            self.lb_playing_track.text = track_name[:l] + "..." 
+        char_nums = int(max_width / char_size) - 3
+
+        if char_nums <= len(track_name):
+            self.lb_playing_track.text = track_name[:char_nums] + "..."
         else:
             self.lb_playing_track.text = track_name
         # self.im_playing_track.icon = self._sound_icon(player_status)
@@ -269,17 +297,17 @@ class FilesListComponent(TogaComponent):
     def on_select(self, widget):
         if self._internal_update:
             return
-        node: Node = self.playlists_list.selection
+        node: Source_ROW | None = self.playlists_list.selection
         if node != self.last_selected_node:
             self.last_selected_node_changed = True
         else:
             self.last_selected_node_changed = False
-        self.last_selected_node = node
+        self.last_selected_node: Source_ROW | None = node
         self.parent_layout.select_track()  # type: ignore
 
-    def load_playlist(self, 
-                      playlist_name="", 
-                      playing_index:int=-1,
+    def load_playlist(self,
+                      playlist_name="",
+                      playing_index: int = -1,
                       player_status: PlayerStatus = PlayerStatus.STOP):
         if playlist_name == "":
             return
@@ -301,19 +329,20 @@ class FilesListComponent(TogaComponent):
         if node is None:  # No selection or playlist selection
             return False
         return True
-    
+
     def reset_selected_node(self):
         self.last_selected_node = None
         self.last_selected_node_changed = False
         self.last_selected_node_changed = False
         self._internal_update = False
-    
-    def selected_track(self):
+
+    def selected_track(self) -> tuple[Source_ROW, str, Dict] | tuple[None, str, Dict]:
         # If no track is selected, select one
         if self.last_selected_node is None:
             if (len(self.playlists_list.data) == 0):  # type: ignore
-                return (None, "", [])
-            self.last_selected_node = self.playlists_list.data[0]  # type: ignore
+                return (None, "", Dict({}))
+            # type: ignore
+            self.last_selected_node = self.playlists_list.data[0]
 
         # Get the playlist name from the parent node
         # and find it in the settings
@@ -334,7 +363,6 @@ class FilesListComponent(TogaComponent):
 
     def remove_track_from_playlist_tree(self, tree_node):
         self.playlists_list.data.remove(tree_node)
-
 
     def previous_index(self, index):
         # Find the previous node in the list
@@ -367,8 +395,7 @@ class PlayerLayout(TogaStackedLayout):
 
         self.player_thread = None
         self.player_thread_factory = None
-        self.last_played = None
-        self.last_playlist = None
+        self.last_played_track = None
         self.last_played_track_index = -1
         self.playlist_name = ""
 
@@ -392,7 +419,7 @@ class PlayerLayout(TogaStackedLayout):
             end_callback)
 
     def ios_player_factory(self, mp3_file, end_callback):
-        from mp3Player.services import IOSPlayerThread
+        from mp3Player.services.players_ios import IOSPlayerThread
         return IOSPlayerThread(
             mp3_file,
             end_callback)
@@ -416,19 +443,12 @@ class PlayerLayout(TogaStackedLayout):
         if self.playlist_name == "":
             # Get the first playlist name
             # self.playlist_name = self.settings.Playlists[0].name
-            self.playlist_name = self.settings.last_playlist
-            try:
-                self.last_playlist = self.settings.find_playlist(
-                    self.playlist_name)
-            except ValueError:
-                self.playlist_name = self.settings.Playlists[0].name
-                self.last_playlist = self.settings.find_playlist(
-                    self.playlist_name)
+            self.playlist_name = self.settings.get_last_playlist()
 
         self.files_list.load_playlist(self.playlist_name)
         return super().on_load()
 
-    def add_files(self, paths, delete_original:bool = False):
+    def add_files(self, paths, delete_original: bool = False):
         # if len(paths) == 0:
         #     paths = [Icons.load().mp3_sample,
         #              Icons.load().mp3_sample_2,]
@@ -457,20 +477,19 @@ class PlayerLayout(TogaStackedLayout):
                     new_mp3.name,
                     new_mp3.length)
                 self.settings.save()
-                
+
         if len(paths) != 0:
-            self.files_list.load_playlist(self.last_playlist, -1, PlayerStatus.STOP)
+            self.files_list.load_playlist(
+                self.playlist_name, -1, PlayerStatus.STOP)
             self.files_list.reset_selected_node()
             self.player_deck.update_player_deck_status("", PlayerStatus.STOP)
-            self.last_played = None
-
-        
+            self.last_played_track = None
 
     def remove_file(self):
-        
+
         if not self.files_list.is_track_selected():
             return
-        
+
         PlayingThreadGlobals.status = PlayerStatus.STOP
         # Get the selected track
         _, playlist_name, track = self.files_list.selected_track()
@@ -488,18 +507,18 @@ class PlayerLayout(TogaStackedLayout):
         self.files_list.reset_selected_node()
         self.player_deck.update_player_deck_status("", PlayerStatus.STOP)
         #
-        self.last_played = None
+        self.last_played_track = None
 
     def previous(self):
-        if self.last_played is not None:
-            track = self.last_played
-            playlist_name = self.last_playlist
+        if self.last_played_track is not None:
+            track = self.last_played_track
+            playlist_name = self.playlist_name
             index = self.last_played_track_index
         else:
-            node, playlist_name, track = self.files_list.selected_track()
-            if playlist_name == "":  # empty playlist
+            row, playlist_name, track = self.files_list.selected_track()
+            if row is None:  # empty playlist
                 return
-            index = node.index
+            index = row.index
 
         # Find the next track in the playlist
         track = self.settings.find_previous_track(playlist_name,  # type: ignore
@@ -511,15 +530,15 @@ class PlayerLayout(TogaStackedLayout):
                                  previous_index)  # type: ignore
 
     def next(self):
-        if self.last_played is not None:
-            track = self.last_played
-            playlist_name = self.last_playlist
+        if self.last_played_track is not None:
+            track = self.last_played_track
+            playlist_name = self.playlist_name
             index = self.last_played_track_index
         else:
-            node, playlist_name, track = self.files_list.selected_track()
-            if playlist_name == "":  # empty playlist
+            row, playlist_name, track = self.files_list.selected_track()
+            if row is None:  # empty playlist
                 return
-            index = node.index
+            index = row.index
 
         # Find the next track in the playlist
         track = self.settings.find_next_track(playlist_name,  # type: ignore
@@ -540,49 +559,49 @@ class PlayerLayout(TogaStackedLayout):
         pass
 
     def play(self):
-        if (self.last_played is None or # first play
-            self.files_list.last_selected_node_changed): # user selected another track
+        if (self.last_played_track is None or  # first play
+                self.files_list.last_selected_node_changed):  # user selected another track
             # Get the selected track
-            node, playlist, track = self.files_list.selected_track()
-            if playlist == "":  # empty playlist
-                return 
-            self.last_played = track
-            self.last_playlist = playlist
-            self.last_played_track_index = node.index
+            row, playlist, track = self.files_list.selected_track()
+            if row is None:  # empty playlist
+                return
+            self.last_played_track = track
+            self.playlist_name = playlist
+            self.last_played_track_index = row.index
             # Play the track
             self.play_selected_track(track,
                                      playlist,
-                                     node.index)  # type: ignore
+                                     row.index)  # type: ignore
             self.player_deck.update_player_deck_status(track.name,
-                                                   PlayerStatus.PLAY)
+                                                       PlayerStatus.PLAY)
             return
         # Start playing the paused track
         PlayingThreadGlobals.status = PlayerStatus.PLAY
-        self.files_list.load_playlist(self.last_playlist, self.last_played_track_index, PlayerStatus.PLAY)
-        self.player_deck.update_player_deck_status(self.last_played.name,
-                                                       PlayerStatus.PLAY)
+        self.files_list.load_playlist(
+            self.playlist_name, self.last_played_track_index, PlayerStatus.PLAY)
+        self.player_deck.update_player_deck_status(self.last_played_track.name,
+                                                   PlayerStatus.PLAY)
 
-        
     def pause(self):
-        if self.last_played is None:  # empty playlist
+        if self.last_played_track is None:  # empty playlist
             return
 
         PlayingThreadGlobals.status = PlayerStatus.PAUSE
-        self.player_deck.update_player_deck_status(self.last_played.name,  # type: ignore
+        self.player_deck.update_player_deck_status(self.last_played_track.name,  # type: ignore
                                                    PlayerStatus.PAUSE)
-        self.files_list.load_playlist(self.last_playlist, 
-                                      self.last_played_track_index, 
+        self.files_list.load_playlist(self.playlist_name,
+                                      self.last_played_track_index,
                                       PlayerStatus.PAUSE)
 
     def stop(self):
         PlayingThreadGlobals.status = PlayerStatus.STOP
         if self.last_played_track_index == -1:  # empty playlist
             return
-        
-        self.last_played = None
+
+        self.last_played_track = None
         self.player_deck.update_player_deck_status("",
                                                    PlayerStatus.STOP)
-        self.files_list.load_playlist(self.last_playlist, 
+        self.files_list.load_playlist(self.playlist_name,
                                       -1,
                                       PlayerStatus.STOP)
 
@@ -599,8 +618,8 @@ class PlayerLayout(TogaStackedLayout):
                 pass
             self.player_thread = None
             # If the track is already playing, stop it
-        self.last_played = track
-        self.last_playlist = playlist
+        self.last_played_track = track
+        self.playlist_name = playlist
         self.last_played_track_index = index
         # Update the status of the selected track
         # self.files_list.update_files_list_status(index,
@@ -646,6 +665,6 @@ class PlayerLayout(TogaStackedLayout):
 
     def on_end(self):
         PlayingThreadGlobals.status = PlayerStatus.STOP
-        self.settings.last_playlist = self.last_playlist
-        self.settings.last_track = self.last_played
+        self.settings.set_last_playlist(self.playlist_name)
+        self.settings.last_track = self.last_played_track
         return super().on_end()

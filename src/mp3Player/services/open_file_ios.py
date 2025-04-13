@@ -10,10 +10,8 @@ from rubicon.objc import (
     objc_const,
     objc_method,
     py_from_ns,
-    at,
 )
-from rubicon.objc.runtime import load_library, objc_id
-from rubicon.objc.runtime import Foundation
+from rubicon.objc.runtime import Foundation, load_library, objc_id
 
 import mp3Player.core as core
 from mp3Player.core import safe_async_call
@@ -36,7 +34,6 @@ NSFileManager = ObjCClass('NSFileManager')
 
 class DocumentPickerDelegate(NSObject,  # type: ignore
                              protocols=[UIDocumentPickerDelegate]):  # type: ignore
-    
 
     @objc_method
     def init_(self):
@@ -54,13 +51,12 @@ class DocumentPickerDelegate(NSObject,  # type: ignore
     def get_serviceCallback(self):
         return self.serviceCallback
 
-
     @objc_method
     def documentPicker_didPickDocumentsAtURLs_(self, picker: objc_id, urls: objc_id) -> None:
         # Handle the selected files
         if self.serviceCallback is not None:
             self.serviceCallback(urls)  # type: ignore
-        
+
         keyWindow = UIApplication.sharedApplication.keyWindow  # type: ignore
         keyWindow.rootViewController.dismissViewControllerAnimated_completion_(
             True, None)
@@ -74,7 +70,7 @@ class DocumentPickerDelegate(NSObject,  # type: ignore
 
 class IOSFileOpen(core.AsyncService):
     def __init__(self,
-                 temp_path:Path,
+                 temp_path: Path,
                  document_types: list[str] = ["UTTypeMP3"],
                  allowsMultipleSelection: bool = True,
                  ) -> None:
@@ -119,7 +115,7 @@ class IOSFileOpen(core.AsyncService):
                 f_src = open(path_str, 'rb')
                 dest_path = self.temp_path / Path(path_str).name
                 f_dest = open(dest_path, 'wb')
-                shutil.copyfileobj(f_src, f_dest)                
+                shutil.copyfileobj(f_src, f_dest)
                 item.stopAccessingSecurityScopedResource()
                 # store the converted Path object
                 fnames.append(dest_path)
