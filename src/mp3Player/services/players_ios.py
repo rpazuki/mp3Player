@@ -4,7 +4,7 @@ import logging
 import threading
 import time
 
-from rubicon.objc import NSDictionary, ObjCClass, objc_const
+from rubicon.objc import NSMutableDictionary, ObjCClass, objc_const
 from rubicon.objc.runtime import load_library, objc_id
 
 from mp3Player.services.players_core import PlayerStatus, PlayingThreadGlobals
@@ -65,12 +65,6 @@ class IOSPlayerThread(threading.Thread):
                 AVAudioSessionCategoryPlayback, None)
             audioSession.setActive_error_(True, None)
             #
-            infos = NSDictionary.dictionaryWithDictionary(  # type: ignore
-                {"MPMediaItemPropertyTitle": self.mp3.title})
-            MPNowPlayingInfoCenter = ObjCClass(
-                'MPNowPlayingInfoCenter')  # type: ignore
-            MPNowPlayingInfoCenter.defaultCenter().nowPlayingInfo = infos  # type: ignore
-            #
             audio_url = NSURL.fileURLWithPath_(  # type: ignore
                 str(self.mp3.data_path))
             self.player = AVAudioPlayer.alloc(  # type: ignore
@@ -83,6 +77,15 @@ class IOSPlayerThread(threading.Thread):
                         PlayingThreadGlobals.status == PlayerStatus.PLAY):
                     self.end_callback()  # type: ignore
                 return
+            #
+            MPMediaItemPropertyTitle = objc_const(libmp,
+                                                  "MPMediaItemPropertyTitle")
+            infos = NSMutableDictionary.dictionaryWithDictionary({}) # type: ignore
+            infos[MPMediaItemPropertyTitle] = self.mp3.name
+            MPNowPlayingInfoCenter = ObjCClass(
+                'MPNowPlayingInfoCenter')  # type: ignore
+            MPNowPlayingInfoCenter.defaultCenter().nowPlayingInfo = infos  # type: ignore
+            
 
             PlayingThreadGlobals.played_secs = self.player.currentTime
             PlayingThreadGlobals.remained_secs = self.player.duration - self.player.currentTime
