@@ -30,7 +30,7 @@ class FilesToolbarComponent(TogaComponent):
         super().__init__(layout, style=Pack(
             direction=ROW, alignment=CENTER, padding=1),
             children=[
-                toga.Button(icon=icons.report,
+                toga.Button(icon=icons.playlist_info,
                             on_press=self.view_playlsits,
                             style=icon_style),
                 toga.Button(icon=icons.add,
@@ -128,7 +128,7 @@ class PlayerDeckComponent(TogaComponent):
                           padding_bottom=4)  # , background_color="#666666")
         buttons_box = toga.Box(style=Pack(direction=ROW, alignment=CENTER),
                                children=[
-                                   toga.Button(icon=icons.rewind,
+                                   toga.Button(icon=icons.previous,
                                                on_press=self.previous,
                                                style=icon_style),
             toga.Button(icon=icons.play,
@@ -137,14 +137,12 @@ class PlayerDeckComponent(TogaComponent):
             toga.Button(icon=icons.stop,
                                        on_press=self.stop,
                                        style=icon_style),
-            toga.Button(icon=icons.forward,
+            toga.Button(icon=icons.next,
                                        on_press=self.next,
                                        style=icon_style),
         ])
         playing_track_box = toga.Box(style=Pack(direction=ROW, alignment=CENTER),
                                      children=[
-            # toga.Button(icon=icons.nosound,
-            #             on_press=self.play),
             toga.Label("", style=Pack(padding_bottom=15,
                                       color="#119900", alignment=CENTER)),
         ])
@@ -258,9 +256,9 @@ class PlayerDeckComponent(TogaComponent):
             case PlayerStatus.PLAY:
                 return Icons.load().sound
             case PlayerStatus.PAUSE:
-                return Icons.load().nosound
+                return Icons.load().no_sound
             case PlayerStatus.STOP:
-                return Icons.load().nosound
+                return Icons.load().no_sound
 
     def _play_btn_icon(self, status: PlayerStatus):
         match status:
@@ -317,7 +315,7 @@ class FilesListComponent(TogaComponent):
         self.playlists_list.data.clear()
         for i, track in enumerate(playlist.tracks):
             self.playlists_list.data.append({
-                "picture": Icons.load().mp3 if i != playing_index else self._icon(player_status),
+                "picture": Icons.load().note if i != playing_index else self._icon(player_status),
                 "name": track.name,
                 "length": track.length,
                 "playlist": playlist.name,
@@ -354,7 +352,7 @@ class FilesListComponent(TogaComponent):
 
     def add_track_to_playlist_tree(self, playlist_name, mp3_name, mp3_length):
         self.playlists_list.data.append({
-            "picture": Icons.load().mp3,
+            "picture": Icons.load().note,
             "name": mp3_name,
             "length": mp3_length,
             "playlist": playlist_name,
@@ -381,9 +379,9 @@ class FilesListComponent(TogaComponent):
             case PlayerStatus.PLAY:
                 return Icons.load().sound
             case PlayerStatus.PAUSE:
-                return Icons.load().nosound
+                return Icons.load().no_sound
             case PlayerStatus.STOP:
-                return Icons.load().mp3
+                return Icons.load().note
 
 
 class PlayerLayout(TogaStackedLayout):

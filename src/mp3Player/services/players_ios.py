@@ -11,15 +11,34 @@ from mp3Player.services.players_core import PlayerStatus, PlayingThreadGlobals
 
 log = logging.getLogger(__name__)
 
+_ = load_library("AVFoundation")
+avfAudio_lib = load_library("AVFAudio")
 libmp = load_library("MediaPlayer")
-# MPRemoteCommandHandlerStatus = ObjCClass(
-# "MPRemoteCommandHandlerStatus")
-# NSInteger = ObjCClass("NSInteger")
+#
 MPRemoteCommandHandlerStatusSuccess = 0  # objc_const(
-# libmp, "MPRemoteCommandHandlerStatusSuccess")
+#
 UIApplication = ObjCClass("UIApplication")
 MPRemoteCommandEvent = ObjCClass("MPRemoteCommandEvent")
 MPRemoteCommand = ObjCClass("MPRemoteCommand")
+AVAudioPlayer = ObjCClass('AVAudioPlayer')
+AVAudioSession = ObjCClass('AVAudioSession')
+NSURL = ObjCClass('NSURL')
+MPNowPlayingInfoCenter = ObjCClass(
+    'MPNowPlayingInfoCenter')  # type: ignore
+MPRemoteCommandCenter = ObjCClass('MPRemoteCommandCenter')
+
+
+AVAudioSessionCategoryPlayback = objc_const(avfAudio_lib,
+                                            "AVAudioSessionCategoryPlayback")
+MPMediaItemPropertyTitle = objc_const(libmp,
+                                      "MPMediaItemPropertyTitle")
+MPNowPlayingInfoPropertyElapsedPlaybackTime = objc_const(
+    libmp,
+    "MPNowPlayingInfoPropertyElapsedPlaybackTime")
+MPMediaItemPropertyPlaybackDuration = objc_const(libmp,
+                                                 "MPMediaItemPropertyPlaybackDuration")
+MPNowPlayingInfoPropertyPlaybackRate = objc_const(libmp,
+                                                  "MPNowPlayingInfoPropertyPlaybackRate")
 
 
 class IOSPlayerThread(threading.Thread):
@@ -50,21 +69,15 @@ class IOSPlayerThread(threading.Thread):
             RuntimeError: If there is an issue reading the audio stream.
         """
         try:
-            # from ctypes import byref, c_void_p, pointer
-
-            _ = load_library("AVFoundation")
-            avfAudio_lib = load_library("AVFAudio")
-            AVAudioPlayer = ObjCClass('AVAudioPlayer')
-            AVAudioSession = ObjCClass('AVAudioSession')
-            NSURL = ObjCClass('NSURL')
-            #
-            AVAudioSessionCategoryPlayback = objc_const(avfAudio_lib,
-                                                        "AVAudioSessionCategoryPlayback")
+            # Create an audio session and set its category
+            # to playback in background and allow mixing with other audio
+            # sessions.
+            # This is necessary for iOS to play audio in the background.
             audioSession = AVAudioSession.sharedInstance()  # type: ignore
             audioSession.setCategory_error_(
                 AVAudioSessionCategoryPlayback, None)
             audioSession.setActive_error_(True, None)
-            #
+            # create an audio player and prepare it for playback
             audio_url = NSURL.fileURLWithPath_(  # type: ignore
                 str(self.mp3.data_path))
             self.player = AVAudioPlayer.alloc(  # type: ignore
@@ -77,16 +90,16 @@ class IOSPlayerThread(threading.Thread):
                         PlayingThreadGlobals.status == PlayerStatus.PLAY):
                     self.end_callback()  # type: ignore
                 return
-            #
-            MPMediaItemPropertyTitle = objc_const(libmp,
-                                                  "MPMediaItemPropertyTitle")
-            infos = NSMutableDictionary.dictionaryWithDictionary({}) # type: ignore
+            # Set the Playing Center's info
+            infos = NSMutableDictionary.dictionaryWithDictionary(  # type: ignore
+                {})
             infos[MPMediaItemPropertyTitle] = self.mp3.name
-            MPNowPlayingInfoCenter = ObjCClass(
-                'MPNowPlayingInfoCenter')  # type: ignore
-            MPNowPlayingInfoCenter.defaultCenter().nowPlayingInfo = infos  # type: ignore
-            
-
+            infos[MPNowPlayingInfoPropertyElapsedPlaybackTime] = self.player.currentTime
+            infos[MPMediaItemPropertyPlaybackDuration] = self.player.duration
+            infos[MPNowPlayingInfoPropertyPlaybackRate] = self.player.rate
+            playiingInfoCenter = MPNowPlayingInfoCenter.defaultCenter()  # type: ignore
+            playiingInfoCenter.nowPlayingInfo = infos
+            #
             PlayingThreadGlobals.played_secs = self.player.currentTime
             PlayingThreadGlobals.remained_secs = self.player.duration - self.player.currentTime
             # while success and not stop:
@@ -94,13 +107,19 @@ class IOSPlayerThread(threading.Thread):
                    PlayingThreadGlobals.status != PlayerStatus.STOP):
                 PlayingThreadGlobals.played_secs = self.player.currentTime
                 PlayingThreadGlobals.remained_secs = self.player.duration - self.player.currentTime
+                infos[MPNowPlayingInfoPropertyElapsedPlaybackTime] = self.player.currentTime
+                playiingInfoCenter.nowPlayingInfo = infos  # type: ignore
                 time.sleep(0.1)
 
                 while PlayingThreadGlobals.status == PlayerStatus.PAUSE:
                     self.player.pause()
+                    infos[MPNowPlayingInfoPropertyPlaybackRate] = 0
+                    playiingInfoCenter.nowPlayingInfo = infos  # type: ignore
                     time.sleep(0.1)
                     if PlayingThreadGlobals.status != PlayerStatus.PAUSE:
                         self.player.play()
+                        infos[MPNowPlayingInfoPropertyPlaybackRate] = 1
+                        playiingInfoCenter.nowPlayingInfo = infos  # type: ignore
 
             self.player.stop()
 
@@ -132,8 +151,7 @@ class RemoteCommandCenter:
         self.stop = None
         self.next = None
         self.previous = None
-        self.command_center = ObjCClass(
-            'MPRemoteCommandCenter').sharedCommandCenter()  # type: ignore
+        self.command_center = MPRemoteCommandCenter.sharedCommandCenter()  # type: ignore
         self.application = UIApplication.sharedApplication  # type: ignore
         self.application.beginReceivingRemoteControlEvents()  # type: ignore
 
@@ -142,8 +160,6 @@ class RemoteCommandCenter:
             py_callback(*args)  # args, e.g., can be a widget
             return MPRemoteCommandHandlerStatusSuccess  # type: ignore
         #
-        # handler = EventTarget_objc.alloc().init_()
-        # handler.set_handlerCallback(local_callback)
         handler = local_callback
         command.enabled = True
         command.addTargetWithHandler_(handler)  # type: ignore

@@ -21,19 +21,19 @@ class PlaylistToolbarComponent(TogaComponent):
                           padding=2)
         buttons_box = toga.Box(style=Pack(direction=ROW, alignment=CENTER),
                                children=[
-            toga.Label("Playlists   ",
-                       style=Pack(padding=2, color="#bb0000")),
-            toga.Button(icon=icons.mp3_player,
+            # toga.Label("Playlists   ",
+            #            style=Pack(padding=2, color="#bb0000")),
+            toga.Button(icon=icons.music,
                         on_press=self.view_play_deck,
                         style=icon_style),
-            toga.Button(icon=icons.report_add,
+            toga.Button(icon=icons.playlist_add,
                         on_press=self.add_playlist,
                         style=icon_style),
-            toga.Button(icon=icons.report_delete,
+            toga.Button(icon=icons.playlist_delete,
                         on_press=self.remove_playlist,
                         enabled=False,
                         style=icon_style),
-            toga.Button(icon=icons.report_edit,
+            toga.Button(icon=icons.playlist_edit,
                         on_press=self.edit_playlist,
                         enabled=False,
                         style=icon_style),
@@ -41,18 +41,18 @@ class PlaylistToolbarComponent(TogaComponent):
         edit_box = toga.Box(style=Pack(direction=ROW, alignment=CENTER),
                             children=[
             toga.TextInput("", style=Pack(width=200)),
-            toga.Button(icon=icons.tick,
+            toga.Button(icon=icons.success,
                         on_press=self.accept_playlist,
                         enabled=False,
                         style=icon_style),
-            toga.Button(icon=icons.cross,
+            toga.Button(icon=icons.cancel,
                         on_press=self.reject_playlist,
                         enabled=False,
                         style=icon_style),
         ]
         )
-        self.btn_remove_playlist = buttons_box.children[3]  # type: ignore
-        self.btn_edit_playlist = buttons_box.children[4]  # type: ignore
+        self.btn_remove_playlist = buttons_box.children[2]  # type: ignore
+        self.btn_edit_playlist = buttons_box.children[3]  # type: ignore
 
         self.playlist_textbox = edit_box.children[0]  # type: ignore
         self.btn_ok = edit_box.children[1]  # type: ignore
@@ -139,7 +139,7 @@ class PlaylistsListComponent(TogaComponent):
         self.playlists_list.data.clear()
         for playlist in self.settings.Playlists:
             self.playlists_list.data.append({
-                "picture": Icons.load().report,
+                "picture": Icons.load().playlist,
                 "name": playlist.name,
                 "file_number": len(playlist.tracks),
             })
@@ -153,7 +153,7 @@ class PlaylistsListComponent(TogaComponent):
 
     def add_playlist_to_tree(self, playlist_name):
         self.playlists_list.data.append({
-            "picture": Icons.load().report,
+            "picture": Icons.load().playlist,
             "name": playlist_name,
             "file_number": 0
         })
