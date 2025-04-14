@@ -456,7 +456,7 @@ class PlayerLayout(TogaStackedLayout):
         if len(paths) != 0:
             PlayingThreadGlobals.status = PlayerStatus.STOP
 
-        for path in paths:
+        for path in sorted(paths, key=lambda p: p.name):
             new_mp3 = mp3.load(path)  # type: ignore
             # Check if the track is already in the playlist
             # and copy the mp3 file to the playlist directory
