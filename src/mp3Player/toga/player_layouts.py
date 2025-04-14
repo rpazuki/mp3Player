@@ -125,6 +125,7 @@ class PlayerDeckComponent(TogaComponent):
         icons = Icons.load()
         icon_style = Pack(width=50,
                           height=48,
+                          padding_left=10,
                           padding_bottom=4)  # , background_color="#666666")
         buttons_box = toga.Box(style=Pack(direction=ROW, alignment=CENTER),
                                children=[
