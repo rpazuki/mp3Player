@@ -1,12 +1,11 @@
 from __future__ import annotations
 
+import dataclasses
 import logging
+from enum import Enum
 from pathlib import Path
 
 import toga
-
-# , silence_crossed_events
-from toga.sources import Node
 from toga.sources import Row as Source_ROW
 from toga.style import Pack
 from toga.style.pack import CENTER, COLUMN, ROW  # type: ignore
@@ -19,6 +18,50 @@ from mp3Player.toga.icons import Icons
 from mp3Player.toga.services.io import FileOpenOpenCV
 
 log = logging.getLogger(__name__)
+
+
+class AudioState(int, Enum):
+    LOADING = 0
+    STOP = 1
+    PLAYING = 2
+    PAUSED = 3
+    ADDING = 4
+    REMOVING = 5
+    SELECTING = 6
+
+
+@dataclasses.dataclass
+class Audio:
+    @classmethod
+    def create(cls):
+        return cls(track=Dict({"name": "",
+                               "length": "",
+                               "path": ""}),
+                   playlist_name="",
+                   index=-1)
+
+    @staticmethod
+    def empty_track():
+        return Dict({"name": "",
+                     "length": "",
+                     "path": ""})
+
+    track: Dict
+    playlist_name: str
+    index: int
+
+    CHAR_SIZE = 10
+
+    def track_name_trimmed(self, max_width):
+        char_nums = int(max_width / self.CHAR_SIZE) - 3
+
+        if char_nums <= len(self.track.name):
+            return self.track.name[:char_nums] + "..."
+        else:
+            return self.track.name
+
+    def is_empty_track(self):
+        return self.track.name == ""
 
 
 class FilesToolbarComponent(TogaComponent):
@@ -41,69 +84,48 @@ class FilesToolbarComponent(TogaComponent):
                             style=icon_style),
         ])
         self.add_btn = self.children[1]
-        # self.add_btn.on_press = self.pre_add_file
-
-    def on_ios_config(self):
-        # def on_dispatch(widget):
-        #     self.parent_layout.add_files([])  # type: ignore
-        # self.add_btn.on_press = on_dispatch
-        ##
-        from mp3Player.services.open_file_ios import IOSFileOpen
-        registry = ServiceRegistry()
-        registry.bind_event(
-            Event("add_file",
-                  EventType.ON_PRESS,
-                  IOSFileOpen(self.ml_app.data_path),
-                  service_callback=self.add_files_ios)
-        )
-
-    def on_ipados_config(self):
-        # def on_dispatch(widget):
-        #     self.parent_layout.add_files([])  # type: ignore
-        # self.add_btn.on_press = on_dispatch
-        ##
-        from mp3Player.services.open_file_ios import IOSFileOpen
-        registry = ServiceRegistry()
-        registry.bind_event(
-            Event("add_file",
-                  EventType.ON_PRESS,
-                  IOSFileOpen(self.ml_app.data_path),
-                  service_callback=self.add_files_ios)
-        )
+        self.remove_btn = self.children[2]
 
     @property
     def parent_layout(self) -> PlayerLayout:
         return self._layout  # type: ignore
 
-    def on_linux_config(self):
-        ##
+    def on_ios_config(self):
+        from mp3Player.services.open_file_ios import IOSFileOpen
         registry = ServiceRegistry()
-        registry.bind_event(
-            Event("add_file",
-                  EventType.ON_PRESS,
-                  FileOpenOpenCV(),
-                  service_callback=self.add_files)
-        )
+        registry.bind_event(Event("add_file",
+                                  EventType.ON_PRESS,
+                                  IOSFileOpen(self.ml_app.data_path),
+                                  service_callback=self.add_files_ios))
+
+    def on_ipados_config(self):
+        from mp3Player.services.open_file_ios import IOSFileOpen
+        registry = ServiceRegistry()
+        registry.bind_event(Event("add_file",
+                                  EventType.ON_PRESS,
+                                  IOSFileOpen(self.ml_app.data_path),
+                                  service_callback=self.add_files_ios))
+
+    def on_linux_config(self):
+        registry = ServiceRegistry()
+        registry.bind_event(Event("add_file",
+                                  EventType.ON_PRESS,
+                                  FileOpenOpenCV(),
+                                  service_callback=self.add_files))
 
     def on_windows_config(self):
-        ##
         registry = ServiceRegistry()
-        registry.bind_event(
-            Event("add_file",
-                  EventType.ON_PRESS,
-                  FileOpenOpenCV(),
-                  service_callback=self.add_files)
-        )
+        registry.bind_event(Event("add_file",
+                                  EventType.ON_PRESS,
+                                  FileOpenOpenCV(),
+                                  service_callback=self.add_files))
 
     def on_darwin_config(self):
-        ##
         registry = ServiceRegistry()
-        registry.bind_event(
-            Event("add_file",
-                  EventType.ON_PRESS,
-                  FileOpenOpenCV(),
-                  service_callback=self.add_files)
-        )
+        registry.bind_event(Event("add_file",
+                                  EventType.ON_PRESS,
+                                  FileOpenOpenCV(),
+                                  service_callback=self.add_files))
 
     def view_playlsits(self, widget):
         self.parent_layout.ml_app.show_playlists()  # type: ignore
@@ -118,6 +140,21 @@ class FilesToolbarComponent(TogaComponent):
 
     def remove_file(self, widget):
         self.parent_layout.remove_file()  # type: ignore
+
+    def on_update(self, state: AudioState, audio: Audio, **kwargs):
+        match state:
+            case AudioState.PLAYING:
+                self.add_btn.enabled = False
+                self.remove_btn.enabled = False
+            case AudioState.PAUSED:
+                self.add_btn.enabled = False
+                self.remove_btn.enabled = False
+            case AudioState.SELECTING:
+                self.remove_btn.enabled = True
+                self.add_btn.enabled = True
+            case _:  # LOADING, STOP, ADDING, REMOVING
+                self.add_btn.enabled = True
+                self.remove_btn.enabled = False
 
 
 class PlayerDeckComponent(TogaComponent):
@@ -167,14 +204,14 @@ class PlayerDeckComponent(TogaComponent):
                                    playing_track_box,
             ],),
         ])
-        self.is_playing = False
         self.btn_play = buttons_box.children[1]
         self.btn_stop = buttons_box.children[2]
-        # self.im_playing_track = playing_track_box.children[0]
         self.lb_playing_track = playing_track_box.children[0]
         self.lb_playing_left = playing_progress_box.children[0]
         self.playing_progress = playing_progress_box.children[1]
         self.lb_playing_remain = playing_progress_box.children[2]
+        #
+        self.audio_state: AudioState = AudioState.STOP
 
     def on_ios_config(self):
         from mp3Player.services.players_ios import RemoteCommandCenter
@@ -196,24 +233,6 @@ class PlayerDeckComponent(TogaComponent):
         center.next_command(self.next, None)
         center.previous_command(self.previous, None)
 
-    def update_player_deck_status(self,
-                                  track_name: str,
-                                  player_status: PlayerStatus):
-        max_width = self.ml_app.main_window.size.width
-        char_size = 10
-        char_nums = int(max_width / char_size) - 3
-
-        if char_nums <= len(track_name):
-            self.lb_playing_track.text = track_name[:char_nums] + "..."
-        else:
-            self.lb_playing_track.text = track_name
-        # self.im_playing_track.icon = self._sound_icon(player_status)
-        self.btn_play.icon = self._play_btn_icon(player_status)
-        if player_status == PlayerStatus.PLAY:
-            self.is_playing = True
-        else:
-            self.is_playing = False
-
     def set_playing_progress(self, played_secs, remained_secs):
         total_seconds = int(played_secs + remained_secs)
         percent = (int(played_secs) / total_seconds) * 100
@@ -223,24 +242,33 @@ class PlayerDeckComponent(TogaComponent):
         self.lb_playing_remain.text = self._format_secs(int(remained_secs))
 
     def previous(self, widget):
-        self.is_playing = True
         self.parent_layout.previous()  # type: ignore
 
     def play(self, widget):
-        if self.is_playing:
-            self.is_playing = False
+        if self.audio_state == AudioState.PLAYING:
             self.parent_layout.pause()  # type: ignore
-        else:
-            self.is_playing = True
+        else:  # STOP or PAUSED
             self.parent_layout.play()  # type: ignore
 
     def stop(self, widget):
-        self.is_playing = False
         self.parent_layout.stop()  # type: ignore
 
     def next(self, widget):
-        self.is_playing = True
         self.parent_layout.next()  # type: ignore
+
+    def on_update(self, state: AudioState, audio: Audio, **kwargs):
+        match state:
+            case AudioState.STOP:
+                self.btn_play.icon = Icons.load().play
+            case AudioState.PLAYING:
+                self.btn_play.icon = Icons.load().pause
+            case AudioState.PAUSED:
+                self.btn_play.icon = Icons.load().play
+        #
+        max_width = self.ml_app.main_window.size.width
+        self.lb_playing_track.text = audio.track_name_trimmed(max_width)
+        #
+        self.audio_state = state
 
     def _format_secs(self, seconds):
         units = {"hours": 3600, "minutes": 60, "seconds": 1}
@@ -252,24 +280,6 @@ class PlayerDeckComponent(TogaComponent):
             values.append(count)
         return f"{values[0]:02d}:{values[1]:02d}:{values[2]:02d}"
 
-    def _sound_icon(self, status: PlayerStatus):
-        match status:
-            case PlayerStatus.PLAY:
-                return Icons.load().sound
-            case PlayerStatus.PAUSE:
-                return Icons.load().no_sound
-            case PlayerStatus.STOP:
-                return Icons.load().no_sound
-
-    def _play_btn_icon(self, status: PlayerStatus):
-        match status:
-            case PlayerStatus.PLAY:
-                return Icons.load().pause
-            case PlayerStatus.PAUSE:
-                return Icons.load().play
-            case PlayerStatus.STOP:
-                return Icons.load().play
-
 
 class FilesListComponent(TogaComponent):
     def __init__(self, layout: TogaStackedLayout, **kwargs) -> None:
@@ -279,13 +289,41 @@ class FilesListComponent(TogaComponent):
                                              )
         super().__init__(layout, style=Pack(padding=10, flex=1),
                          children=[self.__playlists])
-        self.last_selected_node = None
-        self.last_selected_node_changed = False
+        self._selected_index = -1
         self._internal_update = False
+        self.audio_state = AudioState.STOP
 
     @property
     def playlists_list(self) -> toga.DetailedList:
         return self.__playlists
+
+    @property
+    def selected_index(self):
+        return self._selected_index
+
+    @property
+    def selected_audio(self) -> Audio:
+        if len(self.playlists_list.data) == 0:
+            return Audio.create()
+        #
+        node: Source_ROW | None = None
+        if self.selected_index == -1:
+            if (len(self.playlists_list.data) == 0):  # type: ignore
+                return Audio.create()
+            else:
+                node = self.playlists_list.data[0]
+        else:
+            # Get the playlist name from the parent node
+            # and find it in the settings
+            if self.selected_index >= len(self.playlists_list.data):
+                node = self.playlists_list.data[-1]
+                self._selected_index = node.index
+            else:
+                node = self.playlists_list.data[self.selected_index]
+        #
+        track = self.settings.find_track(node.playlist,  # type: ignore
+                                         node.name)
+        return Audio(track, node.playlist, self.selected_index)
 
     def on_common_config(self):
         ############
@@ -297,71 +335,15 @@ class FilesListComponent(TogaComponent):
         if self._internal_update:
             return
         node: Source_ROW | None = self.playlists_list.selection
-        if node != self.last_selected_node:
-            self.last_selected_node_changed = True
-        else:
-            self.last_selected_node_changed = False
-        self.last_selected_node: Source_ROW | None = node
-        self.parent_layout.select_track()  # type: ignore
+        self._selected_index = self.playlists_list.data.index(
+            node) if node is not None else -1
 
-    def load_playlist(self,
-                      playlist_name="",
-                      playing_index: int = -1,
-                      player_status: PlayerStatus = PlayerStatus.STOP):
-        if playlist_name == "":
+        if self._selected_index == -1:
             return
-
-        playlist = self.settings.find_playlist(playlist_name)
-        self._internal_update = True
-        self.playlists_list.data.clear()
-        for i, track in enumerate(playlist.tracks):
-            self.playlists_list.data.append({
-                "picture": Icons.load().note if i != playing_index else self._icon(player_status),
-                "name": track.name,
-                "length": track.length,
-                "playlist": playlist.name,
-                "index": i})
-        self._internal_update = False
-
-    def is_track_selected(self):
-        node: Node = self.playlists_list.selection  # type: ignore
-        if node is None:  # No selection or playlist selection
-            return False
-        return True
-
-    def reset_selected_node(self):
-        self.last_selected_node = None
-        self.last_selected_node_changed = False
-        self.last_selected_node_changed = False
-        self._internal_update = False
-
-    def selected_track(self) -> tuple[Source_ROW, str, Dict] | tuple[None, str, Dict]:
-        # If no track is selected, select one
-        if self.last_selected_node is None:
-            if (len(self.playlists_list.data) == 0):  # type: ignore
-                return (None, "", Dict({}))
-            # type: ignore
-            self.last_selected_node = self.playlists_list.data[0]
-
-        # Get the playlist name from the parent node
-        # and find it in the settings
-        playlist_name = self.last_selected_node.playlist  # type: ignore
-        self.last_selected_node_changed = False
-        return (self.last_selected_node,
-                playlist_name,
-                self.settings.find_track(playlist_name, self.last_selected_node.name))
-
-    def add_track_to_playlist_tree(self, playlist_name, mp3_name, mp3_length):
-        self.playlists_list.data.append({
-            "picture": Icons.load().note,
-            "name": mp3_name,
-            "length": mp3_length,
-            "playlist": playlist_name,
-            "index": len(self.playlists_list.data)
-        })
-
-    def remove_track_from_playlist_tree(self, tree_node):
-        self.playlists_list.data.remove(tree_node)
+        #
+        if (self.audio_state != AudioState.PLAYING and
+                self.audio_state != AudioState.PAUSED):
+            self.parent_layout.audio_selected()  # type: ignore
 
     def previous_index(self, index):
         # Find the previous node in the list
@@ -375,13 +357,33 @@ class FilesListComponent(TogaComponent):
             return 0
         return index + 1
 
-    def _icon(self, status: PlayerStatus):
-        match status:
-            case PlayerStatus.PLAY:
+    def on_update(self, state: AudioState, audio: Audio, **kwargs):
+        self.audio_state = state
+        if audio.playlist_name == "":
+            return
+
+        if state == AudioState.SELECTING:
+            return
+
+        playlist = self.settings.find_playlist(audio.playlist_name)
+        self._internal_update = True
+        self.playlists_list.data.clear()
+        for i, track in enumerate(playlist.tracks):
+            self.playlists_list.data.append({
+                "picture": Icons.load().note if i != audio.index else self._icon(state),
+                "name": track.name,
+                "length": track.length,
+                "playlist": playlist.name,
+                "index": i})
+        self._internal_update = False
+
+    def _icon(self, state: AudioState):
+        match state:
+            case AudioState.PLAYING:
                 return Icons.load().sound
-            case PlayerStatus.PAUSE:
+            case AudioState.PAUSED:
                 return Icons.load().no_sound
-            case PlayerStatus.STOP:
+            case _:  # Stop, Adding, Removing
                 return Icons.load().note
 
 
@@ -394,9 +396,11 @@ class PlayerLayout(TogaStackedLayout):
 
         self.player_thread = None
         self.player_thread_factory = None
-        self.last_played_track = None
-        self.last_played_track_index = -1
-        self.playlist_name = ""
+        self.audio = Audio.create()
+
+    @property
+    def files_toolbar(self) -> FilesToolbarComponent:
+        return self[FilesToolbarComponent]
 
     @property
     def files_list(self) -> FilesListComponent:
@@ -439,172 +443,138 @@ class PlayerLayout(TogaStackedLayout):
         self.player_thread_factory = self.player_factory
 
     def on_load(self):
-        if self.playlist_name == "":
+        if self.audio.playlist_name == "":
             # Get the first playlist name
-            # self.playlist_name = self.settings.Playlists[0].name
-            self.playlist_name = self.settings.get_last_playlist()
-
-        self.files_list.load_playlist(self.playlist_name)
+            self.audio.playlist_name = self.settings.get_last_playlist()
+        # Load the playlist
+        self.on_update(state=AudioState.LOADING,
+                       audio=self.audio)
         return super().on_load()
 
-    def add_files(self, paths, delete_original: bool = False):
-        # if len(paths) == 0:
-        #     paths = [Icons.load().mp3_sample,
-        #              Icons.load().mp3_sample_2,]
-
-        if len(paths) != 0:
-            PlayingThreadGlobals.status = PlayerStatus.STOP
+    def add_files(self, paths: list[Path], delete_original: bool = False):
 
         for path in sorted(paths, key=lambda p: p.name):
-            new_mp3 = mp3.load(path)  # type: ignore
+            new_mp3 = mp3.load(path)
             # Check if the track is already in the playlist
             # and copy the mp3 file to the playlist directory
             # only if it is not already there
-            if len(self.settings.search_tracks(self.playlist_name, new_mp3.name)) == 0:
+            if len(self.settings.search_tracks(self.audio.playlist_name,
+                                               new_mp3.name)) == 0:
                 # Copy the mp3 file to the playlist directory
                 new_mp3.copy_to(self.ml_app.data_path /
-                                new_mp3.relative_path(self.playlist_name),
+                                new_mp3.relative_path(
+                                    self.audio.playlist_name),
                                 delete_original)
                 # Add the track to the playlist settings
-                self.settings.add_track(self.playlist_name,
+                self.settings.add_track(self.audio.playlist_name,
                                         new_mp3.name,
                                         new_mp3.length,
                                         str(new_mp3.data_path))
-                # Add the track to the tree
-                self.files_list.add_track_to_playlist_tree(
-                    self.playlist_name,
-                    new_mp3.name,
-                    new_mp3.length)
                 self.settings.save()
 
         if len(paths) != 0:
-            self.files_list.load_playlist(
-                self.playlist_name, -1, PlayerStatus.STOP)
-            self.files_list.reset_selected_node()
-            self.player_deck.update_player_deck_status("", PlayerStatus.STOP)
-            self.last_played_track = None
+            self.on_update(state=AudioState.ADDING,
+                           audio=self.audio)
+            self.audio.track = Audio.empty_track()
+
+    def audio_selected(self):
+        self.files_toolbar.on_update(state=AudioState.SELECTING,
+                                     audio=self.audio)
 
     def remove_file(self):
 
-        if not self.files_list.is_track_selected():
+        if self.files_list.selected_index == -1:
             return
 
         PlayingThreadGlobals.status = PlayerStatus.STOP
         # Get the selected track
-        _, playlist_name, track = self.files_list.selected_track()
+        audio = self.files_list.selected_audio
         # Delete the mp3 file first
-        mp3_file = mp3.load(Path(track.path))
+        mp3_file = mp3.load(Path(audio.track.path))
         mp3_file.delete()
         # Remove the track from the playlist settings
-        self.settings.remove_track(playlist_name, track)
-        # Remove the track from the tree
-        # self.files_list.remove_track_from_playlist_tree(tree_node)
+        self.settings.remove_track(audio.playlist_name, audio.track)
         # Save the settings
         self.settings.save()
         #
-        self.files_list.load_playlist(playlist_name, -1, PlayerStatus.STOP)
-        self.files_list.reset_selected_node()
-        self.player_deck.update_player_deck_status("", PlayerStatus.STOP)
+        self.on_update(state=AudioState.REMOVING,
+                       audio=self.audio)
         #
-        self.last_played_track = None
+        self.audio.track = Audio.empty_track()
 
     def previous(self):
-        if self.last_played_track is not None:
-            track = self.last_played_track
-            playlist_name = self.playlist_name
-            index = self.last_played_track_index
-        else:
-            row, playlist_name, track = self.files_list.selected_track()
-            if row is None:  # empty playlist
+        if self.audio.is_empty_track():
+            audio = self.files_list.selected_audio
+            if audio.index == -1:  # empty playlist
                 return
-            index = row.index
+            self.audio = audio
 
         # Find the next track in the playlist
-        track = self.settings.find_previous_track(playlist_name,  # type: ignore
-                                                  track)
+        self.audio.track = self.settings.find_previous_track(
+            self.audio.playlist_name,
+            self.audio.track)
         # Play the previous track
-        previous_index = self.files_list.previous_index(index)
-        self.play_selected_track(track,
-                                 playlist_name,
-                                 previous_index)  # type: ignore
+        self.audio.index = self.files_list.previous_index(
+            self.audio.index)
+        self.play_selected_track(self.audio)
 
     def next(self):
-        if self.last_played_track is not None:
-            track = self.last_played_track
-            playlist_name = self.playlist_name
-            index = self.last_played_track_index
-        else:
-            row, playlist_name, track = self.files_list.selected_track()
-            if row is None:  # empty playlist
+        if self.audio.is_empty_track():
+            audio = self.files_list.selected_audio
+            if audio.index == -1:  # empty playlist
                 return
-            index = row.index
-
+            self.audio = audio
         # Find the next track in the playlist
-        track = self.settings.find_next_track(playlist_name,  # type: ignore
-                                              track)
+        self.audio.track = self.settings.find_next_track(
+            self.audio.playlist_name,
+            self.audio.track)
         # Play the next track
-        next_index = self.files_list.next_index(index)
-        self.play_selected_track(track,
-                                 playlist_name,
-                                 next_index)  # type: ignore
-
-    def select_track(self):
-        # Since we cannot catch double click, we only let
-        # the user to select aother track after it starts playing
-        # TODO: must suport it only on linux and macOs and windows
-        # if PlayingThreadGlobals.status == PlayerStatus.STOP:
-        #     return
-        # self.play()
-        pass
+        self.audio.index = self.files_list.next_index(
+            self.audio.index)
+        self.play_selected_track(self.audio)
 
     def play(self):
-        if (self.last_played_track is None or  # first play
-                self.files_list.last_selected_node_changed):  # user selected another track
+        # first time playing or  user selected another track
+        if (self.audio.is_empty_track() or
+                self.audio.index != self.files_list.selected_index):
             # Get the selected track
-            row, playlist, track = self.files_list.selected_track()
-            if row is None:  # empty playlist
+            audio = self.files_list.selected_audio
+            if audio.index == -1:  # empty playlist
                 return
-            self.last_played_track = track
-            self.playlist_name = playlist
-            self.last_played_track_index = row.index
+            self.audio = audio
             # Play the track
-            self.play_selected_track(track,
-                                     playlist,
-                                     row.index)  # type: ignore
-            self.player_deck.update_player_deck_status(track.name,
-                                                       PlayerStatus.PLAY)
+            self.play_selected_track(self.audio)
+            # self.player_deck.update_player_deck_status(track.name,
+            #                                            PlayerStatus.PLAY)
+            self.on_update(state=AudioState.PLAYING,
+                           audio=self.audio)
             return
         # Start playing the paused track
         PlayingThreadGlobals.status = PlayerStatus.PLAY
-        self.files_list.load_playlist(
-            self.playlist_name, self.last_played_track_index, PlayerStatus.PLAY)
-        self.player_deck.update_player_deck_status(self.last_played_track.name,
-                                                   PlayerStatus.PLAY)
+        #
+        self.on_update(state=AudioState.PLAYING,
+                       audio=self.audio)
 
     def pause(self):
-        if self.last_played_track is None:  # empty playlist
+        if self.audio.is_empty_track():  # empty playlist
             return
 
         PlayingThreadGlobals.status = PlayerStatus.PAUSE
-        self.player_deck.update_player_deck_status(self.last_played_track.name,  # type: ignore
-                                                   PlayerStatus.PAUSE)
-        self.files_list.load_playlist(self.playlist_name,
-                                      self.last_played_track_index,
-                                      PlayerStatus.PAUSE)
+        #
+        self.on_update(state=AudioState.PAUSED,
+                       audio=self.audio)
 
     def stop(self):
         PlayingThreadGlobals.status = PlayerStatus.STOP
-        if self.last_played_track_index == -1:  # empty playlist
+        if self.audio.is_empty_track():  # empty playlist
             return
+        #
+        self.audio.track = Audio.empty_track()
+        #
+        self.on_update(state=AudioState.STOP,
+                       audio=self.audio)
 
-        self.last_played_track = None
-        self.player_deck.update_player_deck_status("",
-                                                   PlayerStatus.STOP)
-        self.files_list.load_playlist(self.playlist_name,
-                                      -1,
-                                      PlayerStatus.STOP)
-
-    def play_selected_track(self, track, playlist, index):
+    def play_selected_track(self, player_data):
         PlayingThreadGlobals.status = PlayerStatus.STOP
         if self.player_thread is not None:
             try:
@@ -617,22 +587,15 @@ class PlayerLayout(TogaStackedLayout):
                 pass
             self.player_thread = None
             # If the track is already playing, stop it
-        self.last_played_track = track
-        self.playlist_name = playlist
-        self.last_played_track_index = index
-        # Update the status of the selected track
-        # self.files_list.update_files_list_status(index,
-        #                                          PlayerStatus.PLAY)
-        self.files_list.load_playlist(playlist, index, PlayerStatus.PLAY)
-        self.player_deck.update_player_deck_status(track.name,
-                                                   PlayerStatus.PLAY)
+        self.on_update(state=AudioState.PLAYING,
+                       audio=self.audio)
         # Play the track
-        mp3_file = mp3.load(Path(track.path))  # type: ignore
-
+        mp3_file = mp3.load(Path(self.audio.track.path))
         # The play loop must be called by the main loop
         # Otherwise, MacOS will terminate the app
         # (NSInternalInconsistencyException), since the
         # UI element is not updated by the other thread
+
         def player_loop_main_thread_callback():
             def future_callback():
                 self.play_loop()
@@ -658,12 +621,10 @@ class PlayerLayout(TogaStackedLayout):
 
     def play_loop(self):
         PlayingThreadGlobals.status = PlayerStatus.STOP
-        # Get the selected track
-
         self.next()
 
     def on_end(self):
         PlayingThreadGlobals.status = PlayerStatus.STOP
-        self.settings.set_last_playlist(self.playlist_name)
-        self.settings.last_track = self.last_played_track
+        self.settings.set_last_playlist(self.audio.playlist_name)
+        self.settings.last_track = self.audio.track.name
         return super().on_end()

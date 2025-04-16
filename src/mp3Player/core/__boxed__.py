@@ -5,7 +5,12 @@ import inspect
 from abc import abstractmethod
 from typing import TypeVar
 
-from mp3Player.core.__core__ import AbstractApp, AbstractLayout, Configurable
+from mp3Player.core.__core__ import (
+    AbstractApp,
+    AbstractLayout,
+    Configurable,
+    Updateable,
+)
 
 Box = TypeVar("Box")
 
@@ -50,7 +55,7 @@ class Layout(AbstractLayout):
         pass
 
 
-class Component(Configurable):
+class Component(Configurable, Updateable):
     def __init__(self, layout: StackedLayout, **kwargs) -> None:
         self._layout = layout
         super(Component, self).__init__(**kwargs)
@@ -179,6 +184,12 @@ class StackedLayout(Layout):
         for component in self.instances.values():
             component.on_end()
 
+    def on_update(self, **kwargs):
+        """Update the component with new data."""
+        for instance in self.instances.values():
+            instance.on_update(**kwargs)
+        super().on_update(**kwargs)
+
 
 class MultiLayoutApp(AbstractApp):
 
@@ -234,3 +245,7 @@ class MultiLayoutApp(AbstractApp):
         for layout in self._layout_lookup.values():
             layout.on_end()
         return super().on_end()
+
+    def update(self, **kwargs):
+        """Update the component with new data."""
+        self.current_layout.on_update(**kwargs)

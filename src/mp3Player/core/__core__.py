@@ -77,6 +77,12 @@ class EventType(Enum):
         return vars(EventType)['_member_names_']
 
 
+class Updateable:
+    def on_update(self, **kwargs):
+        """Update the component with new data."""
+        pass
+
+
 class Service(ABC):
     """An abstract class for handeling UI event callbacks
     """
@@ -122,7 +128,7 @@ class Event:
         return getattr(element, self.eventType.name.lower())
 
 
-class AbstractLayout(ABC, Configurable):
+class AbstractLayout(ABC, Configurable,  Updateable):
     def __init__(self, app: AbstractApp) -> None:
         super(AbstractLayout, self).__init__()
         self._app = app
@@ -308,6 +314,10 @@ class AbstractApp(ABC, Configurable):
                          log_level=Config.log.log_level)
         #
         super()._set_config()
+
+    def update(self, **kwargs):
+        """Update the component with new data."""
+        self.layout.on_update(**kwargs)
 
 
 class ServiceRegistry(object):

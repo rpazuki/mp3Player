@@ -30,7 +30,7 @@ class TogaApp(TogaMultiLayoutApp):
                                       )
 
     def show_main(self, playlist_name):
-        self.main_layout.playlist_name = playlist_name
+        self.main_layout.audio.playlist_name = playlist_name
         self.show_layout(self.main_layout)
 
     def show_playlists(self):

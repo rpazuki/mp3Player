@@ -1,9 +1,10 @@
 import asyncio
 import logging
+import re
+from enum import Enum
 
 import toga
-
-# , silence_crossed_events
+from toga.sources import Row as Source_ROW
 from toga.style import Pack
 from toga.style.pack import CENTER, COLUMN, ROW  # type: ignore
 
@@ -11,6 +12,14 @@ from mp3Player.toga import TogaComponent, TogaMultiLayoutApp, TogaStackedLayout
 from mp3Player.toga.icons import Icons
 
 log = logging.getLogger(__name__)
+
+
+class PlaylistState(int, Enum):
+    VIEWING = 0
+    ADDING = 1
+    REMOVING = 2
+    EDITING = 3
+    SELECTING = 4
 
 
 class PlaylistToolbarComponent(TogaComponent):
@@ -38,84 +47,87 @@ class PlaylistToolbarComponent(TogaComponent):
                         enabled=False,
                         style=icon_style),
         ])
-        edit_box = toga.Box(style=Pack(direction=ROW, alignment=CENTER),
-                            children=[
+        self.edit_box = toga.Box(style=Pack(direction=ROW, alignment=CENTER),
+                                 children=[
             toga.TextInput("", style=Pack(width=200)),
             toga.Button(icon=icons.success,
                         on_press=self.accept_playlist,
-                        enabled=False,
                         style=icon_style),
             toga.Button(icon=icons.cancel,
                         on_press=self.reject_playlist,
-                        enabled=False,
                         style=icon_style),
         ]
         )
+        self.btn_add_playlist = buttons_box.children[1]  # type: ignore
         self.btn_remove_playlist = buttons_box.children[2]  # type: ignore
         self.btn_edit_playlist = buttons_box.children[3]  # type: ignore
 
-        self.playlist_textbox = edit_box.children[0]  # type: ignore
-        self.btn_ok = edit_box.children[1]  # type: ignore
-        self.btn_cancel = edit_box.children[2]  # type: ignore
+        self.playlist_textbox = self.edit_box.children[0]  # type: ignore
+        self.btn_ok = self.edit_box.children[1]  # type: ignore
+        self.btn_cancel = self.edit_box.children[2]  # type: ignore
+
+        self.toolbar_box = toga.Box(style=Pack(direction=COLUMN, alignment=CENTER),
+                                    children=[buttons_box,])
         super().__init__(layout, style=Pack(
             direction=ROW, alignment=CENTER, padding=1),
-            children=[
-                toga.Box(style=Pack(direction=COLUMN, alignment=CENTER),
-                         children=[
-                             buttons_box,
-                             edit_box,
-                ]),
-        ])
+            children=[self.toolbar_box])
 
-    def enable(self, flg: bool):
-        self.btn_ok.enabled = flg
-        self.btn_cancel.enabled = flg
+        self.state = PlaylistState.VIEWING
 
-    def reset(self):
-        self.enable(False)
-        self.playlist_textbox.value = ""
-        self.btn_remove_playlist.enabled = False
-        self.btn_edit_playlist.enabled = False
+    @property
+    def editing_playlist(self) -> str:
+        return self.playlist_textbox.value.strip()
 
     def view_play_deck(self, widget):
         self.parent_layout.view_play_deck()  # type: ignore
 
     def add_playlist(self, widget):
-        playlist_name = self.playlist_textbox.value
-        if playlist_name == "":
-            return
-        self.parent_layout.add_playlist(playlist_name)  # type: ignore
-        self.parent_layout[PlaylistsListComponent].load_playlists()
-        self.playlist_textbox.value = ""
+        self.parent_layout.show_add_playlist()  # type: ignore
 
     def remove_playlist(self, widget):
-        self.enable(False)
-        playlist_name = self.playlist_textbox.value
-        if playlist_name == "":
-            return
-
-        self.parent_layout.remove_playlist(playlist_name)  # type: ignore
-        self.parent_layout[PlaylistsListComponent].load_playlists()
+        self.parent_layout.remove_playlist()  # type: ignore
 
     def edit_playlist(self, widget):
-        self.enable(True)
+        self.parent_layout.show_edit_playlist()  # type: ignore
 
     def accept_playlist(self, widget):
-        self.enable(False)
-        playlist_name = self.playlist_textbox.value
-        if playlist_name == "":
-            return
-        self.parent_layout.edit_playlist(playlist_name)  # type: ignore
-        self.parent_layout[PlaylistsListComponent].load_playlists()
+        match self.state:
+            case PlaylistState.ADDING:
+                if self.playlist_textbox.value.strip() == "":
+                    return
+                self.parent_layout.add_playlist()  # type: ignore
+            case PlaylistState.EDITING:
+                if self.playlist_textbox.value.strip() == "":
+                    return
+                self.parent_layout.edit_playlist()  # type: ignore
 
     def reject_playlist(self, widget):
-        self.enable(False)
+        self.parent_layout.cancel_playlist()  # type: ignore
 
-    def selected_playlist(self, playlist_name):
-        # Get the selected playlist
-        self.playlist_textbox.value = playlist_name
-        self.btn_remove_playlist.enabled = True
-        self.btn_edit_playlist.enabled = True
+    def on_update(self, state: PlaylistState, playlist_name: str, **kwargs):
+        self.state = state
+        match state:
+            case PlaylistState.VIEWING:
+                self.toolbar_box.remove(self.edit_box)
+                self.btn_add_playlist.enabled = True
+                self.btn_remove_playlist.enabled = False
+                self.btn_edit_playlist.enabled = False
+                self.playlist_textbox.value = ""
+            case PlaylistState.ADDING | PlaylistState.REMOVING:
+                self.toolbar_box.add(self.edit_box)
+                self.btn_add_playlist.enabled = False
+                self.btn_remove_playlist.enabled = False
+                self.btn_edit_playlist.enabled = False
+            case PlaylistState.EDITING:
+                self.toolbar_box.add(self.edit_box)
+                self.btn_add_playlist.enabled = False
+                self.btn_remove_playlist.enabled = False
+                self.btn_edit_playlist.enabled = False
+                self.playlist_textbox.value = playlist_name.strip()
+            case PlaylistState.SELECTING:
+                self.btn_add_playlist.enabled = True
+                self.btn_remove_playlist.enabled = True
+                self.btn_edit_playlist.enabled = True
 
 
 class PlaylistsListComponent(TogaComponent):
@@ -126,40 +138,68 @@ class PlaylistsListComponent(TogaComponent):
                                              )
         super().__init__(layout, style=Pack(padding=10, flex=1),
                          children=[self.__playlists])
+        self._selected_index = -1
+        self._internal_update = False
+        self.playlist_state = PlaylistState.VIEWING
 
     @property
     def playlists_list(self) -> toga.DetailedList:
         return self.__playlists
 
-    def load_playlists(self):
-        ############
-        # Settings
-        self.settings = self.ml_app.settings
+    @property
+    def selected_index(self):
+        return self._selected_index
+
+    @property
+    def selected_playlist(self) -> str:
+        if len(self.playlists_list.data) == 0:
+            return ""
         #
+        node: Source_ROW | None = None
+        if self.selected_index == -1:
+            if (len(self.playlists_list.data) == 0):  # type: ignore
+                return ""
+            else:
+                node = self.playlists_list.data[0]
+        else:
+            # Get the playlist name from the parent node
+            # and find it in the settings
+            if self.selected_index >= len(self.playlists_list.data):
+                node = self.playlists_list.data[-1]
+                self._selected_index = node.index
+            else:
+                node = self.playlists_list.data[self.selected_index]
+        #
+        playlist = self.settings.find_playlist(node.name)
+        return playlist.name
+
+    def on_select(self, widget):
+        if self._internal_update:
+            return
+        node: Source_ROW | None = self.playlists_list.selection
+        self._selected_index = self.playlists_list.data.index(
+            node) if node is not None else -1
+
+        if self._selected_index == -1:
+            return
+        #
+        if (self.playlist_state == PlaylistState.VIEWING or
+                self.playlist_state == PlaylistState.SELECTING):
+            self.parent_layout.playlist_selected()  # type: ignore
+
+    def on_update(self, state: PlaylistState, playlist_name: str, **kwargs):
+        self.playlist_state = state
+        #
+        self._internal_update = True
         self.playlists_list.data.clear()
+        self.settings = self.ml_app.settings
         for playlist in self.settings.Playlists:
             self.playlists_list.data.append({
                 "picture": Icons.load().playlist,
-                "name": playlist.name,
-                "file_number": len(playlist.tracks),
+                "name": playlist.name,  # type: ignore
+                "file_number": len(playlist.tracks),  # type: ignore
             })
-
-    def on_select(self, widget):
-        if self.playlists_list.selection is None:
-            return
-        playlist_name = self.playlists_list.selection.name  # type: ignore
-        self.parent_layout[PlaylistToolbarComponent].selected_playlist(
-            playlist_name)  # type: ignore
-
-    def add_playlist_to_tree(self, playlist_name):
-        self.playlists_list.data.append({
-            "picture": Icons.load().playlist,
-            "name": playlist_name,
-            "file_number": 0
-        })
-
-    def remove_track_from_playlist_tree(self, tree_node):
-        self.playlists_list.data.remove(tree_node)
+        self._internal_update = False
 
 
 class PlaylistLayout(TogaStackedLayout):
@@ -172,6 +212,7 @@ class PlaylistLayout(TogaStackedLayout):
             "Alert",
             ""
         )
+        self.playlist = ""
 
     def show_dialog(self,
                     message: str,
@@ -203,29 +244,44 @@ class PlaylistLayout(TogaStackedLayout):
         self.settings = self.ml_app.settings
 
     def on_load(self):
-        self.playlists_tree.load_playlists()
-        self.toolbar.reset()
+        # Load the list of playlists
+        self.on_update(state=PlaylistState.VIEWING,
+                       playlist_name=self.playlist)
         return super().on_load()
 
-    def view_play_deck(self):
-        tree = self.playlists_tree  # type: ignore
-        if tree.playlists_list.selection is None:  # type: ignore
+    def playlist_selected(self):
+        self.playlist = self.playlists_tree.selected_playlist
+        self.toolbar.on_update(state=PlaylistState.SELECTING,
+                               playlist_name=self.playlist)
+
+    def show_add_playlist(self):
+        self.on_update(state=PlaylistState.ADDING,
+                       playlist_name=self.playlist)
+
+    def show_edit_playlist(self):
+        self.on_update(state=PlaylistState.EDITING,
+                       playlist_name=self.playlist)
+
+    def cancel_playlist(self):
+        self.on_update(state=PlaylistState.VIEWING,
+                       playlist_name=self.playlist)
+
+    def add_playlist(self):
+        playlist_name = self.toolbar.editing_playlist
+        if not self._is_alphanumeric(playlist_name):
             self.show_dialog(
                 title="Alert",
-                message="Please select a playlist for playing.",
+                message="A playlist name must contain only letters, \n "
+                "numbers, underscores, or spaces.",
                 dialog_type=toga.InfoDialog  # type: ignore
             )
             return
-        # Get the selected playlist
-        # playlist_name = self.playlist_textbox.value
-        playlist_name = tree.playlists_list.selection.name  # type: ignore
-        self.ml_app.show_main(playlist_name)  # type: ignore
-
-    def add_playlist(self, playlist_name):
         # Save the settings
         if not self.settings.has_playlist(playlist_name):
             self.settings.add_playlist(playlist_name)
             self.settings.save()
+            self.on_update(state=PlaylistState.VIEWING,
+                           playlist_name=self.playlist)
         else:
             self.show_dialog(
                 title="Alert",
@@ -234,7 +290,10 @@ class PlaylistLayout(TogaStackedLayout):
                 dialog_type=toga.InfoDialog  # type: ignore
             )
 
-    def remove_playlist(self, playlist_name):
+    def remove_playlist(self):
+        if self.playlists_tree.selected_index == -1:
+            return
+        playlist_name = self.playlists_tree.selected_playlist
         if self.settings.has_playlist(playlist_name):
             playlist = self.settings.find_playlist(playlist_name)
             if len(playlist.tracks) > 0:
@@ -243,7 +302,8 @@ class PlaylistLayout(TogaStackedLayout):
                         self.settings.remove_playlist(playlist_name,
                                                       self.ml_app.data_path)
                         self.settings.save()
-                        self[PlaylistsListComponent].load_playlists()
+                        self.on_update(state=PlaylistState.VIEWING,
+                                       playlist_name=self.playlist)
 
                 self.show_dialog(
                     title="Delete",
@@ -256,21 +316,27 @@ class PlaylistLayout(TogaStackedLayout):
             self.settings.remove_playlist(playlist_name,
                                           self.ml_app.data_path)
             self.settings.save()
+            self.on_update(state=PlaylistState.VIEWING,
+                           playlist_name=self.playlist)
 
-    def edit_playlist(self, new_playlist_name):
+    def edit_playlist(self):
+        new_playlist_name = self.toolbar.editing_playlist
+        if not self._is_alphanumeric(new_playlist_name):
+            self.show_dialog(
+                title="Alert",
+                message="A playlist name must contain only letters, \n"
+                "numbers, underscores, or spaces.",
+                dialog_type=toga.InfoDialog  # type: ignore
+            )
+            return
         if not self.settings.has_playlist(new_playlist_name):
-            if self.playlists_tree.playlists_list.selection is None:
-                self.show_dialog(
-                    title="Alert",
-                    message="Please select a playlist first to edit.",
-                    dialog_type=toga.InfoDialog  # type: ignore
-                )
-                return
-            playlist_name = self.playlists_tree.playlists_list.selection.name  # type: ignore
+            playlist_name = self.playlists_tree.selected_playlist.playlist_name  # type: ignore
             self.settings.edit_playlist(playlist_name,
                                         new_playlist_name,
                                         self.ml_app.data_path)
             self.settings.save()
+            self.on_update(state=PlaylistState.VIEWING,
+                           playlist_name=self.playlist)
         else:
             self.show_dialog(
                 title="Alert",
@@ -278,3 +344,19 @@ class PlaylistLayout(TogaStackedLayout):
                 " already exists.",
                 dialog_type=toga.InfoDialog  # type: ignore
             )
+
+    def view_play_deck(self):
+        tree = self.playlists_tree  # type: ignore
+        if tree.playlists_list.selection is None:  # type: ignore
+            self.show_dialog(
+                title="Alert",
+                message="Please select a playlist for playing.",
+                dialog_type=toga.InfoDialog  # type: ignore
+            )
+            return
+        # Get the selected playlist
+        playlist_name = tree.playlists_list.selection.name  # type: ignore
+        self.ml_app.show_main(playlist_name)  # type: ignore
+
+    def _is_alphanumeric(self, playlist_name: str) -> bool:
+        return bool(re.match(r'^[a-zA-Z0-9_ ]+$', playlist_name))
