@@ -355,8 +355,20 @@ class Settings(DefaultDict):
 
             # If the attribute is not set, return the default value
             self.last_playlist_private = self.Playlists[0].name
-            ret = self.Playlists[0].name
+            return self.Playlists[0].name
+            
+        if ret not in [p.name for p in self.Playlists]:
+            if len(self.Playlists) == 0:
+                # If the attribute is not set, return the default value
+                self.add_playlist("Playlist 1")
+                self.save()
+
+            # If the attribute is not set, return the default value
+            self.last_playlist_private = self.Playlists[0].name
+            return self.Playlists[0].name
+        
         return ret
+
 
     def set_last_playlist(self, name: str):
         """Set the last playlist name.
