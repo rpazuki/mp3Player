@@ -330,7 +330,7 @@ class PlaylistLayout(TogaStackedLayout):
             )
             return
         if not self.settings.has_playlist(new_playlist_name):
-            playlist_name = self.playlists_tree.selected_playlist.playlist_name  # type: ignore
+            playlist_name = self.playlists_tree.selected_playlist  # type: ignore
             self.settings.edit_playlist(playlist_name,
                                         new_playlist_name,
                                         self.ml_app.data_path)
