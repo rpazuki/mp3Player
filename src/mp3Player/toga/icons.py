@@ -10,26 +10,28 @@ class Icons:
     # https://www.customicondesign.com/free-icons/
     _instance = None
     _data_path = Path(__file__).parent.parent / "resources"
-    add = None
-    cancel = None
-    delete = None
-    next = None
-    no_sound = None
-    note = None
-    mp3 = None
-    music = None
-    pause = None
-    pencile = None
-    play = None
-    playlist_add = None
-    playlist_delete = None
-    playlist_edit = None
-    playlist_info = None
-    playlist = None
-    previous = None
-    stop = None
-    success = None
-    sound = None
+    add: toga.Icon | None = None
+    address_book: toga.Icon | None = None
+    address_book_add: toga.Icon | None = None
+    cancel: toga.Icon | None = None
+    delete: toga.Icon | None = None
+    next: toga.Icon | None = None
+    no_sound: toga.Icon | None = None
+    note: toga.Icon | None = None
+    mp3: toga.Icon | None = None
+    music: toga.Icon | None = None
+    pause: toga.Icon | None = None
+    pencile: toga.Icon | None = None
+    play: toga.Icon | None = None
+    playlist_add: toga.Icon | None = None
+    playlist_delete: toga.Icon | None = None
+    playlist_edit: toga.Icon | None = None
+    playlist_info: toga.Icon | None = None
+    playlist: toga.Icon | None = None
+    previous: toga.Icon | None = None
+    stop: toga.Icon | None = None
+    success: toga.Icon | None = None
+    sound: toga.Icon | None = None
 
     mp3_sample = None
     mp3_sample_2 = None
@@ -41,6 +43,10 @@ class Icons:
             Icons._instance = Icons()
             # Load icons here
             Icons._instance.add = toga.Icon(Icons._data_path / "add.png")
+            Icons._instance.address_book = toga.Icon(
+                Icons._data_path / "addressbook.png")
+            Icons._instance.address_book_add = toga.Icon(
+                Icons._data_path / "addressbook-add.png")
             Icons._instance.cancel = toga.Icon(Icons._data_path / "cancel.png")
             Icons._instance.delete = toga.Icon(Icons._data_path / "delete.png")
             Icons._instance.next = toga.Icon(Icons._data_path / "next.png")

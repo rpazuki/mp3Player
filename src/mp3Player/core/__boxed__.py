@@ -18,8 +18,8 @@ Box = TypeVar("Box")
 class Layout(AbstractLayout):
 
     def __init__(self, app: MultiLayoutApp) -> None:
-        super().__init__(app)
         self._app = app
+        super().__init__(app)
 
     @property
     def ml_app(self) -> MultiLayoutApp:
@@ -35,6 +35,7 @@ class Layout(AbstractLayout):
         """Build the main window of the app and its layout.
         """
         #
+        self._app = app
         self._box = self._build_box()
         #
         return self._box
@@ -148,6 +149,7 @@ class StackedLayout(Layout):
 
     def build_layout(self, app):
         #
+        self._app = app
         self._build_box()
         #
         return self._box

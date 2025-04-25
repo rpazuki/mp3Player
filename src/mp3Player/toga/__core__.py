@@ -55,23 +55,52 @@ from mp3Player.core import Component, Layout, MultiLayoutApp, StackedLayout
 log = logging.getLogger(__name__)
 
 
-class TogaLayout(Layout):
-    def __init__(self, app: TogaMultiLayoutApp) -> None:
-        super().__init__(app)
-        self._app = app
+class Promiseable:
+    def __init__(self, **kwargs) -> None:
+        super().__init__()
 
     @property
     def ml_app(self) -> TogaMultiLayoutApp:
+        if self._app is None:
+            raise ValueError("app has not been initialized.")
+        return self._app
+
+    @ml_app.setter
+    def ml_app(self, value: TogaMultiLayoutApp):
+        self._app = value
+
+    def promise(self, func):
+        if not callable(func):
+            raise ValueError("The argument must be callable. "
+                             "(Turn it into a lambda if it's a statment.)")
+
+        def wrapper():
+            func()
+
+        self.ml_app.loop.call_soon_threadsafe(wrapper)
+
+
+class TogaLayout(Layout, Promiseable):
+    def __init__(self, app: TogaMultiLayoutApp) -> None:
+        self._app = app
+        super().__init__(app)
+
+    @property
+    def ml_app(self) -> TogaMultiLayoutApp:
+        if self._app is None:
+            raise ValueError("app has not been initialized.")
         return self._app
 
 
-class TogaComponent(Component, Configurable, toga.Box):
+class TogaComponent(Component, Configurable, toga.Box, Promiseable):
     def __init__(self, layout: TogaStackedLayout, **kwargs) -> None:
-        super().__init__(layout, **kwargs)
         self._layout = layout
+        super().__init__(layout, **kwargs)
 
     @property
     def ml_app(self) -> TogaMultiLayoutApp:
+        if self._layout.ml_app is None:
+            raise ValueError("app has not been initialized.")
         return self._layout.ml_app
 
     @property
@@ -79,13 +108,14 @@ class TogaComponent(Component, Configurable, toga.Box):
         return self._layout
 
 
-class TogaStackedLayout(StackedLayout):
+class TogaStackedLayout(StackedLayout, Promiseable):
     def __init__(self,
                  app: TogaMultiLayoutApp,
                  *types):  # type: ignore
         self._box = toga.Box(style=Pack(direction=COLUMN,
                                         alignment=CENTER, flex=1)
                              )
+        self._app = app
         super().__init__(app, self._box, *types)
 
     @property

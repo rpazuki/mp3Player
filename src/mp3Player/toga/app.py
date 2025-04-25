@@ -3,8 +3,7 @@ Studying bees diseases by analysing photos
 """
 import logging
 
-# import mp3Player.core as core
-# from mp3Player.core import ProcessesRegistry
+from mp3Player.services import PlayerStatus, PlayingThreadGlobals
 from mp3Player.toga import TogaMultiLayoutApp
 from mp3Player.toga.player_layouts import PlayerLayout
 from mp3Player.toga.playlist_layouts import PlaylistLayout
@@ -23,22 +22,32 @@ class TogaApp(TogaMultiLayoutApp):
                  formal_name: str,
                  app_id="net.pazuki.mp3player"):
 
-        self.main_layout = PlayerLayout(self)
-        super(TogaApp, self).__init__(init_layout=self.main_layout,
+        self.player_layout = PlayerLayout(self)
+        self.playlist_layout = PlaylistLayout(self)
+
+        super(TogaApp, self).__init__(init_layout=self.playlist_layout,
                                       formal_name=formal_name,
                                       app_id=app_id,
                                       )
 
-    def show_main(self, playlist_name):
-        self.main_layout.audio.playlist_name = playlist_name
-        self.show_layout(self.main_layout)
+    def startup(self):
+        super().startup()
+        # If the last playlist is empty, show the last playlist instead of
+        # PlaylistLayout
+        if (self.settings.last_playlist_private != "" and
+                self.settings.find_playlist(self.settings.last_playlist_private)):
+            self.show_player(self.settings.last_playlist_private)
+
+    def show_player(self, playlist_name):
+        self.player_layout.audio.playlist_name = playlist_name
+        self.show_layout(self.player_layout)
 
     def show_playlists(self):
-        self.main_layout.stop()
-        if self.main_layout.player_thread is not None:
+        PlayingThreadGlobals.status = PlayerStatus.STOP
+        if self.player_layout.player_thread is not None:
             try:
-                self.main_layout.progress_thread.join()
-                self.main_layout.player_thread.join()
+                self.player_layout.progress_thread.join()
+                self.player_layout.player_thread.join()
             except RuntimeError:
                 pass
         self.show_layout(PlaylistLayout(self))

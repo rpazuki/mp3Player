@@ -75,6 +75,7 @@ class Settings(DefaultDict):
     __is_changed = False
     __loading_path = ""
     FILE_NAME = "mp3Player_settings.json"
+    DEFAULT_PLAYLIST_NAME = "Playlist 1"
 
     def __init__(__self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -97,10 +98,10 @@ class Settings(DefaultDict):
                     # and set the default settings
                     if len(Settings.__instance.Playlists) == 0:
                         Settings.__instance.Playlists.append(Dict(
-                            {'name': 'Playlist 1',
+                            {'name': Settings.DEFAULT_PLAYLIST_NAME,
                              'tracks': []
                              }))
-                        Settings.__instance._last_playlist = 'Playlist 1'
+                        Settings.__instance.last_playlist_private = ""
                         Settings.__is_changed = True
                     else:
                         Settings.__is_changed = False
@@ -109,11 +110,11 @@ class Settings(DefaultDict):
                 ###################################
                 # Define the default settings here
                 default_conf = {'Playlists': [
-                                {'name': 'Playlist 1',
+                                {'name': Settings.DEFAULT_PLAYLIST_NAME,
                                  'tracks': []
                                  },
                                 ],
-                                'last_playlist_private': 'Playlist 1',
+                                'last_playlist_private': '',
                                 }
                 with open(data_path / Settings.FILE_NAME, "w") as f:
                     json.dump(default_conf, f, indent=4)
@@ -350,25 +351,24 @@ class Settings(DefaultDict):
         if ret == "" or ret == {}:
             if len(self.Playlists) == 0:
                 # If the attribute is not set, return the default value
-                self.add_playlist("Playlist 1")
+                self.add_playlist(Settings.DEFAULT_PLAYLIST_NAME)
                 self.save()
 
             # If the attribute is not set, return the default value
-            self.last_playlist_private = self.Playlists[0].name
+            # self.last_playlist_private = self.Playlists[0].name
             return self.Playlists[0].name
-            
+
         if ret not in [p.name for p in self.Playlists]:
             if len(self.Playlists) == 0:
                 # If the attribute is not set, return the default value
-                self.add_playlist("Playlist 1")
+                self.add_playlist(Settings.DEFAULT_PLAYLIST_NAME)
                 self.save()
 
             # If the attribute is not set, return the default value
-            self.last_playlist_private = self.Playlists[0].name
+            # self.last_playlist_private = self.Playlists[0].name
             return self.Playlists[0].name
-        
-        return ret
 
+        return ret
 
     def set_last_playlist(self, name: str):
         """Set the last playlist name.
