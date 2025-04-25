@@ -9,7 +9,7 @@ class Icons:
     # https://www.iconarchive.com/show/flatastic-2-icons-by-custom-icon-design.html
     # https://www.customicondesign.com/free-icons/
     _instance = None
-    _data_path = Path(__file__).parent.parent / "resources"
+    _data_path = Path(__file__).parent / "resources"
     add: toga.Icon | None = None
     address_book: toga.Icon | None = None
     address_book_add: toga.Icon | None = None
@@ -35,6 +35,8 @@ class Icons:
 
     mp3_sample = None
     mp3_sample_2 = None
+
+    app_icon = None
 
     @staticmethod
     def load():
@@ -76,4 +78,13 @@ class Icons:
                 Icons._data_path / "success.png")
             Icons._instance.sound = toga.Icon(Icons._data_path / "sound.png")
 
+            Icons._instance.app_icon = toga.Icon(
+                Icons._data_path / "Mp3Player.128.png")
+
         return Icons._instance
+
+    @staticmethod
+    def get_app_icon() -> bytes:
+        with open(Path(__file__).parent / "resources" / "Mp3Player.128.png", "rb") as f:
+            data = f.read()
+        return data

@@ -24,10 +24,8 @@ test_sources = [
 ]
 
 requires = [
-   "addict",
+   "pyMOSF[release]",
    "eyed3",
-   "numpy",
-   "pytoml",
    "pymp3",
 
 ]

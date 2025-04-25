@@ -1,10 +1,10 @@
 import logging
 from typing import Any
 
-import mp3Player.core as core
-from mp3Player.config import Dict
-from mp3Player.core import processFactory, processLogicProperty
-from mp3Player.core.__image_services__ import SyncImageService
+import pyMOSF.core as core
+from pyMOSF.config import Dict
+from pyMOSF.core import processFactory, processLogicProperty
+from pyMOSF.core.__image_services__ import SyncImageService
 
 log = logging.getLogger(__name__)
 

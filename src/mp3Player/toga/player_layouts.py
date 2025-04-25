@@ -6,16 +6,16 @@ from enum import Enum
 from pathlib import Path
 
 import toga
+from pyMOSF.config import Dict
+from pyMOSF.core import Event, EventType, ServiceRegistry
+from pyMOSF.toga import TogaComponent, TogaMultiLayoutApp, TogaStackedLayout
+from pyMOSF.toga.services import FileOpen
 from toga.sources import Row as Source_ROW
 from toga.style import Pack
 from toga.style.pack import CENTER, COLUMN, ROW  # type: ignore
 
-from mp3Player.config import Dict
-from mp3Player.core import Event, EventType, ServiceRegistry
+from mp3Player.icons import Icons
 from mp3Player.services import PlayerStatus, PlayingThreadGlobals, ProgressThread, mp3
-from mp3Player.toga import TogaComponent, TogaMultiLayoutApp, TogaStackedLayout
-from mp3Player.toga.icons import Icons
-from mp3Player.toga.services.io import FileOpenOpenCV
 
 log = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ class Audio:
         return self.track.name == ""
 
 
-class FilesToolbarComponent(TogaComponent):
+class IOSFilesToolbarComponent(TogaComponent):
     def __init__(self, layout: TogaStackedLayout, **kwargs) -> None:
         icons = Icons.load()
         icon_style = Pack(width=48,
@@ -87,11 +87,11 @@ class FilesToolbarComponent(TogaComponent):
         # self.remove_btn = self.children[2]
 
     @property
-    def parent_layout(self) -> PlayerLayout:
+    def parent_layout(self) -> IOSPlayerLayout:
         return self._layout  # type: ignore
 
     def on_ios_config(self):
-        from mp3Player.services.open_file_ios import IOSFileOpen
+        from pyMOSF.services.open_file_ios import IOSFileOpen
         registry = ServiceRegistry()
         registry.bind_event(Event("add_file",
                                   EventType.ON_PRESS,
@@ -99,7 +99,7 @@ class FilesToolbarComponent(TogaComponent):
                                   service_callback=self.add_files_ios))
 
     def on_ipados_config(self):
-        from mp3Player.services.open_file_ios import IOSFileOpen
+        from pyMOSF.services.open_file_ios import IOSFileOpen
         registry = ServiceRegistry()
         registry.bind_event(Event("add_file",
                                   EventType.ON_PRESS,
@@ -110,26 +110,26 @@ class FilesToolbarComponent(TogaComponent):
         registry = ServiceRegistry()
         registry.bind_event(Event("add_file",
                                   EventType.ON_PRESS,
-                                  FileOpenOpenCV(),
+                                  FileOpen(multiple_select=True),
                                   service_callback=self.add_files))
 
     def on_darwin_config(self):
         registry = ServiceRegistry()
         registry.bind_event(Event("add_file",
                                   EventType.ON_PRESS,
-                                  FileOpenOpenCV(),
+                                  FileOpen(multiple_select=True),
                                   service_callback=self.add_files))
 
     def view_playlsits(self, widget):
         self.parent_layout.ml_app.show_playlists()  # type: ignore
 
-    def add_files(self, paths):
+    def add_files(self, selected):
         self.parent_layout.add_files(
-            paths, delete_original=False)  # type: ignore
+            selected.files, delete_original=False)  # type: ignore
 
-    def add_files_ios(self, paths):
+    def add_files_ios(self, selected):
         self.parent_layout.add_files(
-            paths, delete_original=True)  # type: ignore
+            selected.files, delete_original=True)  # type: ignore
 
     def on_update(self, state: AudioState, audio: Audio, **kwargs):
         match state:
@@ -143,7 +143,7 @@ class FilesToolbarComponent(TogaComponent):
                 self.add_btn.enabled = True
 
 
-class WinFilesToolbarComponent(TogaComponent):
+class DesktopFilesToolbarComponent(TogaComponent):
     def __init__(self, layout: TogaStackedLayout, **kwargs) -> None:
         icons = Icons.load()
         icon_style = Pack(width=48,
@@ -166,26 +166,37 @@ class WinFilesToolbarComponent(TogaComponent):
         self.remove_btn = self.children[2]
 
     @property
-    def parent_layout(self) -> PlayerLayout:
+    def parent_layout(self) -> DesktopPlayerLayout:
         return self._layout  # type: ignore
 
+    def on_linux_config(self):
+        ServiceRegistry().bind_event(Event("add_file",
+                                           EventType.ON_PRESS,
+                                           FileOpen(multiple_select=True),
+                                           service_callback=self.add_files))
+
+    def on_darwin_config(self):
+        ServiceRegistry().bind_event(Event("add_file",
+                                           EventType.ON_PRESS,
+                                           FileOpen(multiple_select=True),
+                                           service_callback=self.add_files))
+
     def on_windows_config(self):
-        registry = ServiceRegistry()
-        registry.bind_event(Event("add_file",
-                                  EventType.ON_PRESS,
-                                  FileOpenOpenCV(),
-                                  service_callback=self.add_files))
+        ServiceRegistry().bind_event(Event("add_file",
+                                           EventType.ON_PRESS,
+                                           FileOpen(multiple_select=True),
+                                           service_callback=self.add_files))
 
     def view_playlsits(self, widget):
         self.parent_layout.ml_app.show_playlists()  # type: ignore
 
-    def add_files(self, paths):
+    def add_files(self, selected):
         self.parent_layout.add_files(
-            paths, delete_original=False)  # type: ignore
+            selected.files, delete_original=False)  # type: ignore
 
-    def add_files_ios(self, paths):
+    def add_files_ios(self, selected):
         self.parent_layout.add_files(
-            paths, delete_original=True)  # type: ignore
+            selected.files, delete_original=True)  # type: ignore
 
     def remove_file(self, widget):
         self.parent_layout.remove_file()  # type: ignore
@@ -330,7 +341,7 @@ class PlayerDeckComponent(TogaComponent):
         return f"{values[0]:02d}:{values[1]:02d}:{values[2]:02d}"
 
 
-class FilesListComponent(TogaComponent):
+class IOSFilesListComponent(TogaComponent):
     def __init__(self, layout: TogaStackedLayout, **kwargs) -> None:
         self.__playlists = toga.DetailedList(accessors=("name", "length", "icon"),
                                              style=Pack(flex=1),
@@ -378,15 +389,9 @@ class FilesListComponent(TogaComponent):
             else:
                 node = self.playlists_list.data[self.selected_index]
         #
-        track = self.settings.find_track(node.playlist,  # type: ignore
-                                         node.name)
+        track = self.ml_app.settings.find_track(node.playlist,  # type: ignore
+                                                node.name)
         return Audio(track, node.playlist, self.selected_index)
-
-    def on_common_config(self):
-        ############
-        # Settings
-        self.settings = self.ml_app.settings
-        #
 
     def on_select(self, widget):
         if self._internal_update:
@@ -432,7 +437,7 @@ class FilesListComponent(TogaComponent):
 
         def later():
             self._internal_update = True
-            playlist = self.settings.find_playlist(audio.playlist_name)
+            playlist = self.ml_app.settings.find_playlist(audio.playlist_name)
             self._internal_update = True
             self.playlists_list.data.clear()
             for i, track in enumerate(playlist.tracks):
@@ -457,9 +462,52 @@ class FilesListComponent(TogaComponent):
                 return Icons.load().note
 
 
-class WinFilesListComponent(FilesListComponent):
+class DesktopFilesListComponent(TogaComponent):
     def __init__(self, layout: TogaStackedLayout, **kwargs) -> None:
-        super().__init__(layout, **kwargs)
+        self.__playlists = toga.DetailedList(accessors=("name", "length", "icon"),
+                                             style=Pack(flex=1),
+                                             on_select=self.on_select,
+                                             )
+        super().__init__(layout, style=Pack(padding=10, flex=1),
+                         children=[self.__playlists])
+        self._selected_index = -1
+        self._previous_selected_index = -1
+
+    @property
+    def playlists_list(self) -> toga.DetailedList:
+        return self.__playlists
+
+    @property
+    def selected_index(self):
+        return self._selected_index
+
+    @selected_index.setter
+    def selected_index(self, value):
+        self._selected_index = value
+
+    @property
+    def selected_audio(self) -> Audio:
+        if len(self.playlists_list.data) == 0:
+            return Audio.create()
+        #
+        node: Source_ROW | None = None
+        if self.selected_index == -1:
+            if (len(self.playlists_list.data) == 0):  # type: ignore
+                return Audio.create()
+            else:
+                node = self.playlists_list.data[0]
+        else:
+            # Get the playlist name from the parent node
+            # and find it in the settings
+            if self.selected_index >= len(self.playlists_list.data):
+                node = self.playlists_list.data[-1]
+                self._selected_index = node.index
+            else:
+                node = self.playlists_list.data[self.selected_index]
+        #
+        track = self.ml_app.settings.find_track(node.playlist,  # type: ignore
+                                                node.name)
+        return Audio(track, node.playlist, self.selected_index)
 
     def on_select(self, widget):
         if self._internal_update:
@@ -472,12 +520,30 @@ class WinFilesListComponent(FilesListComponent):
         if self._selected_index == -1:
             return
 
-        #
-        if (self.audio_state != AudioState.PLAYING and
-                self.audio_state != AudioState.PAUSED):
-            self.parent_layout.audio_selected()  # type: ignore
+        # Double click
+        if self._selected_index == self._previous_selected_index:
+            self.parent_layout.play()  # type: ignore
+            self._previous_selected_index = -1
+        else:  # Single click (although it is called before double click too)
+            self._previous_selected_index = self._selected_index
+            # To update the toolbar state
+            if (self.audio_state != AudioState.PLAYING and
+                    self.audio_state != AudioState.PAUSED):
+                self.parent_layout.audio_selected()  # type: ignore
 
         self._internal_update = False
+
+    def previous_index(self, index):
+        # Find the previous node in the list
+        if index == 0:
+            return len(self.playlists_list.data) - 1
+        return index - 1
+
+    def next_index(self, index):
+        # Find the next node in the list
+        if index == len(self.playlists_list.data) - 1:
+            return 0
+        return index + 1
 
     def on_update(self, state: AudioState, audio: Audio, **kwargs):
         self.audio_state = state
@@ -488,7 +554,7 @@ class WinFilesListComponent(FilesListComponent):
             return
 
         log.info(f"on_update: {state} {audio.playlist_name}")
-        playlist = self.settings.find_playlist(audio.playlist_name)
+        playlist = self.ml_app.settings.find_playlist(audio.playlist_name)
         self._internal_update = True
         self.playlists_list.data.clear()
         for i, track in enumerate(playlist.tracks):
@@ -500,66 +566,33 @@ class WinFilesListComponent(FilesListComponent):
                 "index": i})
         self._internal_update = False
 
+    def _icon(self, state: AudioState):
+        match state:
+            case AudioState.PLAYING:
+                return Icons.load().sound
+            case AudioState.PAUSED:
+                return Icons.load().no_sound
+            case _:  # Stop, Adding, Removing
+                return Icons.load().note
 
-class PlayerLayout(TogaStackedLayout):
-    def __init__(self, app: TogaMultiLayoutApp):
+
+class CommonPlayerLayout(TogaStackedLayout):
+    def __init__(self, app: TogaMultiLayoutApp, *types):
         super().__init__(app,
-                         FilesToolbarComponent,
-                         FilesListComponent,
-                         PlayerDeckComponent)
+                         *types)
 
         self.player_thread = None
         self.player_thread_factory = None
         self.audio = Audio.create()
 
     @property
-    def files_toolbar(self) -> FilesToolbarComponent:
-        return self[FilesToolbarComponent]
-
-    @property
-    def files_list(self) -> FilesListComponent:
-        return self[FilesListComponent]
-
-    @property
     def player_deck(self) -> PlayerDeckComponent:
         return self[PlayerDeckComponent]
-
-    def on_common_config(self):
-        ############
-        # Settings
-        self.settings = self.ml_app.settings
-
-    def player_factory(self, mp3_file, end_callback):
-        from mp3Player.services import PlayerThread
-        return PlayerThread(
-            mp3_file,
-            end_callback)
-
-    def ios_player_factory(self, mp3_file, end_callback):
-        from mp3Player.services.players_ios import IOSPlayerThread
-        return IOSPlayerThread(
-            mp3_file,
-            end_callback)
-
-    def on_ios_config(self):
-        self.player_thread_factory = self.ios_player_factory
-
-    def on_ipados_config(self):
-        self.player_thread_factory = self.ios_player_factory
-
-    def on_linux_config(self):
-        self.player_thread_factory = self.player_factory
-
-    def on_windows_config(self):
-        self.player_thread_factory = self.player_factory
-
-    def on_darwin_config(self):
-        self.player_thread_factory = self.player_factory
 
     def on_load(self):
         if self.audio.playlist_name == "":
             # Get the first playlist name
-            self.audio.playlist_name = self.settings.get_last_playlist()
+            self.audio.playlist_name = self.ml_app.settings.get_last_playlist()
         # Load the playlist
         self.on_update(state=AudioState.LOADING,
                        audio=self.audio)
@@ -572,19 +605,19 @@ class PlayerLayout(TogaStackedLayout):
             # Check if the track is already in the playlist
             # and copy the mp3 file to the playlist directory
             # only if it is not already there
-            if len(self.settings.search_tracks(self.audio.playlist_name,
-                                               new_mp3.name)) == 0:
+            if len(self.ml_app.settings.search_tracks(self.audio.playlist_name,
+                                                      new_mp3.name)) == 0:
                 # Copy the mp3 file to the playlist directory
                 new_mp3.copy_to(self.ml_app.data_path /
                                 new_mp3.relative_path(
                                     self.audio.playlist_name),
                                 delete_original)
                 # Add the track to the playlist settings
-                self.settings.add_track(self.audio.playlist_name,
-                                        new_mp3.name,
-                                        new_mp3.length,
-                                        str(new_mp3.data_path))
-                self.settings.save()
+                self.ml_app.settings.add_track(self.audio.playlist_name,
+                                               new_mp3.name,
+                                               new_mp3.length,
+                                               str(new_mp3.data_path))
+                self.ml_app.settings.save()
 
         if len(paths) != 0:
             self.on_update(state=AudioState.ADDING,
@@ -592,24 +625,24 @@ class PlayerLayout(TogaStackedLayout):
             self.audio.track = Audio.empty_track()
 
     def audio_selected(self):
-        self.files_toolbar.on_update(state=AudioState.SELECTING,
+        self.files_toolbar.on_update(state=AudioState.SELECTING,  # type: ignore
                                      audio=self.audio)
 
     def remove_file(self):
 
-        if self.files_list.selected_index == -1:
+        if self.files_list.selected_index == -1:  # type: ignore
             return
 
         PlayingThreadGlobals.status = PlayerStatus.STOP
         # Get the selected track
-        audio = self.files_list.selected_audio
+        audio = self.files_list.selected_audio  # type: ignore
         # Delete the mp3 file first
         mp3_file = mp3.load(Path(audio.track.path))
         mp3_file.delete()
         # Remove the track from the playlist settings
-        self.settings.remove_track(audio.playlist_name, audio.track)
+        self.ml_app.settings.remove_track(audio.playlist_name, audio.track)
         # Save the settings
-        self.settings.save()
+        self.ml_app.settings.save()
         #
         self.on_update(state=AudioState.REMOVING,
                        audio=self.audio)
@@ -618,43 +651,43 @@ class PlayerLayout(TogaStackedLayout):
 
     def previous(self):
         if self.audio.is_empty_track():
-            audio = self.files_list.selected_audio
+            audio = self.files_list.selected_audio  # type: ignore
             if audio.index == -1:  # empty playlist
                 return
             self.audio = audio
 
         # Find the next track in the playlist
-        self.audio.track = self.settings.find_previous_track(
+        self.audio.track = self.ml_app.settings.find_previous_track(
             self.audio.playlist_name,
             self.audio.track)
         # Play the previous track
-        self.audio.index = self.files_list.previous_index(
+        self.audio.index = self.files_list.previous_index(  # type: ignore
             self.audio.index)
-        self.files_list.selected_index = self.audio.index
+        self.files_list.selected_index = self.audio.index  # type: ignore
         self.play_selected_track(self.audio)
 
     def next(self):
         if self.audio.is_empty_track():
-            audio = self.files_list.selected_audio
+            audio = self.files_list.selected_audio  # type: ignore
             if audio.index == -1:  # empty playlist
                 return
             self.audio = audio
         # Find the next track in the playlist
-        self.audio.track = self.settings.find_next_track(
+        self.audio.track = self.ml_app.settings.find_next_track(
             self.audio.playlist_name,
             self.audio.track)
         # Play the next track
-        self.audio.index = self.files_list.next_index(
+        self.audio.index = self.files_list.next_index(  # type: ignore
             self.audio.index)
-        self.files_list.selected_index = self.audio.index
+        self.files_list.selected_index = self.audio.index  # type: ignore
         self.play_selected_track(self.audio)
 
     def play(self):
         # first time playing or  user selected another track
         if (self.audio.is_empty_track() or
-                self.audio.index != self.files_list.selected_index):
+                self.audio.index != self.files_list.selected_index):  # type: ignore
             # Get the selected track
-            audio = self.files_list.selected_audio
+            audio = self.files_list.selected_audio  # type: ignore
             if audio.index == -1:  # empty playlist
                 return
             self.audio = audio
@@ -734,5 +767,64 @@ class PlayerLayout(TogaStackedLayout):
     def on_end(self):
         PlayingThreadGlobals.status = PlayerStatus.STOP
         if self.audio is not None:
-            self.settings.set_last_playlist(self.audio.playlist_name)
+            self.ml_app.settings.set_last_playlist(self.audio.playlist_name)
         return super().on_end()
+
+
+class IOSPlayerLayout(CommonPlayerLayout):
+    def __init__(self, app: TogaMultiLayoutApp):
+        super().__init__(app,
+                         IOSFilesToolbarComponent,
+                         IOSFilesListComponent,
+                         PlayerDeckComponent)
+
+    @property
+    def files_toolbar(self) -> IOSFilesToolbarComponent:
+        return self[IOSFilesToolbarComponent]
+
+    @property
+    def files_list(self) -> IOSFilesListComponent:
+        return self[IOSFilesListComponent]
+
+    def ios_player_factory(self, mp3_file, end_callback):
+        from mp3Player.services.players_ios import IOSPlayerThread
+        return IOSPlayerThread(
+            mp3_file,
+            end_callback)
+
+    def on_ios_config(self):
+        self.player_thread_factory = self.ios_player_factory
+
+    def on_ipados_config(self):
+        self.player_thread_factory = self.ios_player_factory
+
+
+class DesktopPlayerLayout(CommonPlayerLayout):
+    def __init__(self, app: TogaMultiLayoutApp):
+        super().__init__(app,
+                         DesktopFilesToolbarComponent,
+                         DesktopFilesListComponent,
+                         PlayerDeckComponent)
+
+    @property
+    def files_toolbar(self) -> DesktopFilesToolbarComponent:
+        return self[DesktopFilesToolbarComponent]
+
+    @property
+    def files_list(self) -> DesktopFilesListComponent:
+        return self[DesktopFilesListComponent]
+
+    def player_factory(self, mp3_file, end_callback):
+        from mp3Player.services import PlayerThread
+        return PlayerThread(
+            mp3_file,
+            end_callback)
+
+    def on_linux_config(self):
+        self.player_thread_factory = self.player_factory
+
+    def on_windows_config(self):
+        self.player_thread_factory = self.player_factory
+
+    def on_darwin_config(self):
+        self.player_thread_factory = self.player_factory

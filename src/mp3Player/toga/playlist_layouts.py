@@ -4,12 +4,12 @@ import re
 from enum import Enum
 
 import toga
+from pyMOSF.toga import TogaComponent, TogaMultiLayoutApp, TogaStackedLayout
 from toga.sources import Row as Source_ROW
 from toga.style import Pack
 from toga.style.pack import CENTER, COLUMN, ROW  # type: ignore
 
-from mp3Player.toga import TogaComponent, TogaMultiLayoutApp, TogaStackedLayout
-from mp3Player.toga.icons import Icons
+from mp3Player.icons import Icons
 
 log = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class PlaylistState(int, Enum):
     LOADING = 5
 
 
-class PlaylistToolbarComponent(TogaComponent):
+class IOSPlaylistToolbarComponent(TogaComponent):
     def __init__(self, layout: TogaStackedLayout, **kwargs) -> None:
         icons = Icons.load()
         icon_style = Pack(width=48,
@@ -31,11 +31,6 @@ class PlaylistToolbarComponent(TogaComponent):
                           padding=2)
         buttons_box = toga.Box(style=Pack(direction=ROW, alignment=CENTER),
                                children=[
-            # toga.Label("Playlists   ",
-            #            style=Pack(padding=2, color="#bb0000")),
-            toga.Button(icon=icons.note,
-                        on_press=self.view_play_deck,
-                        style=icon_style),
             toga.Button(icon=icons.address_book_add,
                         on_press=self.add_playlist,
                         style=icon_style),
@@ -51,7 +46,7 @@ class PlaylistToolbarComponent(TogaComponent):
                         style=icon_style),
         ]
         )
-        self.btn_add_playlist = buttons_box.children[1]  # type: ignore
+        self.btn_add_playlist = buttons_box.children[0]  # type: ignore
 
         self.playlist_textbox = self.edit_box.children[0]  # type: ignore
         self.btn_ok = self.edit_box.children[1]  # type: ignore
@@ -122,14 +117,14 @@ class DesktopPlaylistToolbarComponent(TogaComponent):
             toga.Button(icon=icons.note,
                         on_press=self.view_play_deck,
                         style=icon_style),
-            toga.Button(icon=icons.playlist_add,
+            toga.Button(icon=icons.add,
                         on_press=self.add_playlist,
                         style=icon_style),
-            toga.Button(icon=icons.playlist_delete,
+            toga.Button(icon=icons.delete,
                         on_press=self.remove_playlist,
                         enabled=False,
                         style=icon_style),
-            toga.Button(icon=icons.playlist_edit,
+            toga.Button(icon=icons.pencile,
                         on_press=self.edit_playlist,
                         enabled=False,
                         style=icon_style),
@@ -217,7 +212,7 @@ class DesktopPlaylistToolbarComponent(TogaComponent):
                 self.btn_edit_playlist.enabled = True
 
 
-class PlaylistsListComponent(TogaComponent):
+class IOSPlaylistsListComponent(TogaComponent):
     def __init__(self, layout: TogaStackedLayout, **kwargs) -> None:
         self.__playlists = toga.DetailedList(accessors=("name", "file_number", "picture"),
                                              style=Pack(flex=1),
@@ -262,7 +257,7 @@ class PlaylistsListComponent(TogaComponent):
             else:
                 node = self.playlists_list.data[self.selected_index]
         #
-        playlist = self.settings.find_playlist(node.name)
+        playlist = self.ml_app.settings.find_playlist(node.name)
         return playlist.name
 
     def on_select(self, widget):
@@ -270,16 +265,6 @@ class PlaylistsListComponent(TogaComponent):
             return
         node: Source_ROW | None = self.playlists_list.selection
         if node is not None:
-            # temp_index = self.playlists_list.data.index(
-            #     node)
-
-            # if temp_index == self._selected_index:
-            #     # primary action will be called here
-            #     # self._selected_index = -1
-            #     pass
-            # else:
-            #     self._selected_index = temp_index
-            #     self.parent_layout.view_play_deck()  # type: ignore
             self._selected_index = self.playlists_list.data.index(
                 node)
             self.parent_layout.view_play_deck()  # type: ignore
@@ -299,8 +284,7 @@ class PlaylistsListComponent(TogaComponent):
         #
         self._internal_update = True
         self.playlists_list.data.clear()
-        self.settings = self.ml_app.settings
-        for playlist in self.settings.Playlists:
+        for playlist in self.ml_app.settings.Playlists:
             self.playlists_list.data.append({
                 "picture": Icons.load().address_book,
                 "name": playlist.name,  # type: ignore
@@ -318,6 +302,7 @@ class DesktopPlaylistsListComponent(TogaComponent):
         super().__init__(layout, style=Pack(padding=10, flex=1),
                          children=[self.__playlists])
         self._selected_index = -1
+        self._previous_selected_index = -1
         self._internal_update = False
         self.playlist_state = PlaylistState.LOADING
 
@@ -349,7 +334,7 @@ class DesktopPlaylistsListComponent(TogaComponent):
             else:
                 node = self.playlists_list.data[self.selected_index]
         #
-        playlist = self.settings.find_playlist(node.name)
+        playlist = self.ml_app.settings.find_playlist(node.name)
         return playlist.name
 
     def on_select(self, widget):
@@ -361,9 +346,12 @@ class DesktopPlaylistsListComponent(TogaComponent):
 
         if self._selected_index == -1:
             return
-        #
-        if (self.playlist_state == PlaylistState.VIEWING or
-                self.playlist_state == PlaylistState.SELECTING):
+
+        if self._selected_index == self._previous_selected_index:
+            self._previous_selected_index = -1
+            self.parent_layout.view_play_deck()  # type: ignore
+        else:
+            self._previous_selected_index = self._selected_index
             self.parent_layout.playlist_selected()  # type: ignore
 
     def on_update(self, state: PlaylistState, playlist_name: str, **kwargs):
@@ -371,8 +359,7 @@ class DesktopPlaylistsListComponent(TogaComponent):
         #
         self._internal_update = True
         self.playlists_list.data.clear()
-        self.settings = self.ml_app.settings
-        for playlist in self.settings.Playlists:
+        for playlist in self.ml_app.settings.Playlists:
             self.playlists_list.data.append({
                 "picture": Icons.load().address_book,
                 "name": playlist.name,  # type: ignore
@@ -381,11 +368,9 @@ class DesktopPlaylistsListComponent(TogaComponent):
         self._internal_update = False
 
 
-class PlaylistLayout(TogaStackedLayout):
-    def __init__(self, app: TogaMultiLayoutApp):
-        super().__init__(app,
-                         PlaylistToolbarComponent,
-                         PlaylistsListComponent)
+class CommonPlaylistLayout(TogaStackedLayout):
+    def __init__(self, app: TogaMultiLayoutApp, *types):
+        super().__init__(app, *types)
 
         self.message_dialog = toga.InfoDialog(
             "Alert",
@@ -409,29 +394,16 @@ class PlaylistLayout(TogaStackedLayout):
             dialog_callback = dummy
         task.add_done_callback(dialog_callback)
 
-    @property
-    def toolbar(self) -> PlaylistToolbarComponent:
-        return self[PlaylistToolbarComponent]
-
-    @property
-    def playlists_tree(self) -> PlaylistsListComponent:
-        return self[PlaylistsListComponent]
-
-    def on_common_config(self):
-        ############
-        # Settings
-        self.settings = self.ml_app.settings
-
     def on_load(self):
         # Load the list of playlists
         self.on_update(state=PlaylistState.LOADING,
                        playlist_name=self.playlist)
         return super().on_load()
 
-    # Only called in Win version
+    # Only called in Desktop version
     def playlist_selected(self):
-        self.playlist = self.playlists_tree.selected_playlist
-        self.toolbar.on_update(state=PlaylistState.SELECTING,
+        self.playlist = self.playlists_tree.selected_playlist  # type: ignore
+        self.toolbar.on_update(state=PlaylistState.SELECTING,  # type: ignore
                                playlist_name=self.playlist)
 
     def show_add_playlist(self):
@@ -440,17 +412,17 @@ class PlaylistLayout(TogaStackedLayout):
                        playlist_name=self.playlist)
 
     def show_edit_playlist(self):
-        self.playlist = self.playlists_tree.selected_playlist
+        self.playlist = self.playlists_tree.selected_playlist  # type: ignore
         self.on_update(state=PlaylistState.EDITING,
                        playlist_name=self.playlist)
 
     def cancel_playlist(self):
-        self.playlist = self.playlists_tree.selected_playlist
+        self.playlist = self.playlists_tree.selected_playlist  # type: ignore
         self.on_update(state=PlaylistState.VIEWING,
                        playlist_name=self.playlist)
 
     def add_playlist(self):
-        playlist_name = self.toolbar.editing_playlist
+        playlist_name = self.toolbar.editing_playlist  # type: ignore
         if not self._is_alphanumeric(playlist_name):
             self.show_dialog(
                 title="Alert",
@@ -460,9 +432,9 @@ class PlaylistLayout(TogaStackedLayout):
             )
             return
         # Save the settings
-        if not self.settings.has_playlist(playlist_name):
-            self.settings.add_playlist(playlist_name)
-            self.settings.save()
+        if not self.ml_app.settings.has_playlist(playlist_name):
+            self.ml_app.settings.add_playlist(playlist_name)
+            self.ml_app.settings.save()
             self.on_update(state=PlaylistState.VIEWING,
                            playlist_name=self.playlist)
         else:
@@ -474,15 +446,15 @@ class PlaylistLayout(TogaStackedLayout):
             )
 
     def remove_playlist(self):
-        playlist_name = self.playlists_tree.selected_playlist
-        if self.settings.has_playlist(playlist_name):
-            playlist = self.settings.find_playlist(playlist_name)
+        playlist_name = self.playlists_tree.selected_playlist  # type: ignore
+        if self.ml_app.settings.has_playlist(playlist_name):
+            playlist = self.ml_app.settings.find_playlist(playlist_name)
             if len(playlist.tracks) > 0:
                 def callback(task):
                     if task.result():
-                        self.settings.remove_playlist(playlist_name,
-                                                      self.ml_app.data_path)
-                        self.settings.save()
+                        self.ml_app.settings.remove_playlist(playlist_name,
+                                                             self.ml_app.data_path)
+                        self.ml_app.settings.save()
                         self.on_update(state=PlaylistState.VIEWING,
                                        playlist_name=self.playlist)
 
@@ -494,14 +466,14 @@ class PlaylistLayout(TogaStackedLayout):
                 )
                 return
 
-            self.settings.remove_playlist(playlist_name,
-                                          self.ml_app.data_path)
-            self.settings.save()
+            self.ml_app.settings.remove_playlist(playlist_name,
+                                                 self.ml_app.data_path)
+            self.ml_app.settings.save()
             self.on_update(state=PlaylistState.VIEWING,
                            playlist_name=self.playlist)
 
     def edit_playlist(self):
-        new_playlist_name = self.toolbar.editing_playlist
+        new_playlist_name = self.toolbar.editing_playlist  # type: ignore
         if not self._is_alphanumeric(new_playlist_name):
             self.show_dialog(
                 title="Alert",
@@ -511,16 +483,16 @@ class PlaylistLayout(TogaStackedLayout):
             )
             return
 
-        if not self.settings.has_playlist(new_playlist_name):
+        if not self.ml_app.settings.has_playlist(new_playlist_name):
             playlist_name = self.playlists_tree.selected_playlist  # type: ignore
-            self.settings.edit_playlist(playlist_name,
-                                        new_playlist_name,
-                                        self.ml_app.data_path)
-            self.settings.save()
+            self.ml_app.settings.edit_playlist(playlist_name,
+                                               new_playlist_name,
+                                               self.ml_app.data_path)
+            self.ml_app.settings.save()
             self.on_update(state=PlaylistState.VIEWING,
                            playlist_name=self.playlist)
         else:
-            if self.playlists_tree.selected_playlist == new_playlist_name:
+            if self.playlists_tree.selected_playlist == new_playlist_name:  # type: ignore
                 self.on_update(state=PlaylistState.VIEWING,
                                playlist_name=self.playlist)
             else:
@@ -546,3 +518,33 @@ class PlaylistLayout(TogaStackedLayout):
 
     def _is_alphanumeric(self, playlist_name: str) -> bool:
         return bool(re.match(r'^[a-zA-Z0-9_ ]+$', playlist_name))
+
+
+class IOSPlaylistLayout(CommonPlaylistLayout):
+    def __init__(self, app: TogaMultiLayoutApp):
+        super().__init__(app,
+                         IOSPlaylistToolbarComponent,
+                         IOSPlaylistsListComponent)
+
+    @property
+    def toolbar(self) -> IOSPlaylistToolbarComponent:
+        return self[IOSPlaylistToolbarComponent]
+
+    @property
+    def playlists_tree(self) -> IOSPlaylistsListComponent:
+        return self[IOSPlaylistsListComponent]
+
+
+class DesktopPlaylistLayout(CommonPlaylistLayout):
+    def __init__(self, app: TogaMultiLayoutApp):
+        super().__init__(app,
+                         DesktopPlaylistToolbarComponent,
+                         DesktopPlaylistsListComponent)
+
+    @property
+    def toolbar(self) -> DesktopPlaylistToolbarComponent:
+        return self[DesktopPlaylistToolbarComponent]
+
+    @property
+    def playlists_tree(self) -> DesktopPlaylistsListComponent:
+        return self[DesktopPlaylistsListComponent]

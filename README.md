@@ -19,6 +19,7 @@
 ```
 sudo apt install cmake
 sudo apt install portaudio19-dev python3-pyaudio
+pip install pyMOSF[beeware]
 ```
 
 ### MacOS
@@ -27,6 +28,7 @@ sudo apt install portaudio19-dev python3-pyaudio
 ```
 brew install cmake
 brew install portaudio
+pip install pyMOSF[beeware]
 ```
 
 Next, find the 'portaudio' install address by running
@@ -56,10 +58,15 @@ forge iOS setuptools-git-versioning
 forge iOS numpy
 forge iOS pymp3
 ```
-Make sure you updates the xcode paths in each recipe's 'meta.yaml'. 
+Make sure you updates the xcode paths in each recipe's 'meta.yaml'.
 Also update the following entry in 'pyproject.tmol' of this project according to your 'mobile-forge' installation
 ```
 requirement_installer_args = ["--find-links", "/Users/<usename>/<mobile-forge-address>/dist/"]
+```
+
+and finally,
+```
+pip install pyMOSF[beeware]
 ```
 
 ## packaging

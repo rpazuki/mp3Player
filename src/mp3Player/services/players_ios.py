@@ -7,6 +7,7 @@ import time
 from rubicon.objc import NSMutableDictionary, ObjCClass, objc_const
 from rubicon.objc.runtime import load_library, objc_id
 
+from mp3Player.icons import Icons
 from mp3Player.services.players_core import PlayerStatus, PlayingThreadGlobals
 
 log = logging.getLogger(__name__)
@@ -39,6 +40,8 @@ MPMediaItemPropertyPlaybackDuration = objc_const(libmp,
                                                  "MPMediaItemPropertyPlaybackDuration")
 MPNowPlayingInfoPropertyPlaybackRate = objc_const(libmp,
                                                   "MPNowPlayingInfoPropertyPlaybackRate")
+MPMediaItemPropertyArtwork = objc_const(libmp,
+                                        "MPMediaItemPropertyArtwork")
 
 
 class IOSPlayerThread(threading.Thread):
@@ -97,6 +100,15 @@ class IOSPlayerThread(threading.Thread):
             infos[MPNowPlayingInfoPropertyElapsedPlaybackTime] = self.player.currentTime
             infos[MPMediaItemPropertyPlaybackDuration] = self.player.duration
             infos[MPNowPlayingInfoPropertyPlaybackRate] = self.player.rate
+            if len(self.mp3.audiofile.tag.images) > 0:  # type: ignore
+                # type: ignore
+                image_data = self.mp3.audiofile.tag.images[0].image_data
+            else:
+                image_data = Icons.get_app_icon()  # type: ignore
+            image = ObjCClass("UIImage").imageWithData_(  # type: ignore
+                image_data)
+            infos[MPMediaItemPropertyArtwork] = image
+
             playiingInfoCenter = MPNowPlayingInfoCenter.defaultCenter()  # type: ignore
             playiingInfoCenter.nowPlayingInfo = infos
             #
