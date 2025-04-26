@@ -410,6 +410,7 @@ class IOSFilesListComponent(TogaComponent):
         self._internal_update = False
 
     def primary_action(self, widget, row, **kwargs):
+        self._selected_index = row.index
         self.parent_layout.remove_file()  # type: ignore
 
     def previous_index(self, index):
