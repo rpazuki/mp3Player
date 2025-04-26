@@ -1,16 +1,16 @@
 from __future__ import annotations
 
+import io
 import logging
 import threading
 import time
 
 from rubicon.objc import (
     NSMutableDictionary,
-    ObjCProtocol,
     ObjCClass,
+    objc_block,
+    objc_const,
     objc_method,
-    objc_property,
-    objc_const
 )
 from rubicon.objc.runtime import load_library, objc_id
 from rubicon.objc.types import CGSize
@@ -36,7 +36,7 @@ NSURL = ObjCClass('NSURL')
 MPNowPlayingInfoCenter = ObjCClass(
     'MPNowPlayingInfoCenter')  # type: ignore
 MPRemoteCommandCenter = ObjCClass('MPRemoteCommandCenter')
-# MPMediaItemArtwork = ObjCProtocol("MPMediaItemArtwork")
+MPMediaItemArtwork = ObjCClass("MPMediaItemArtwork")
 
 AVAudioSessionCategoryPlayback = objc_const(avfAudio_lib,
                                             "AVAudioSessionCategoryPlayback")
@@ -52,26 +52,32 @@ MPNowPlayingInfoPropertyPlaybackRate = objc_const(libmp,
 MPMediaItemPropertyArtwork = objc_const(libmp,
                                         "MPMediaItemPropertyArtwork")
 
-# class MPMediaItemPropertyArtworkDelegate(NSObject,
-#                                          protocols=[MPMediaItemArtwork]):
-    
-#     bounds = objc_property()
-#     @objc_method
-#     def init_(self):
-#         self = self.init()
-#         if self is None:
-#             return None
-#         self.image = None
-#         return self
 
-#     @objc_method
-#     def imageWithSize_size(self, size: CGSize):
-#         self.bounds = size
-#         return self.image
+class MPMediaItemPropertyArtworkDelegate(NSObject):  # type: ignore
 
-#     @objc_method
-#     def set_image(self, image: objc_id):
-#         self.image = image
+    @objc_method
+    def init_(self):
+        self = self.init()
+        if self is None:
+            return None
+        self.image = None
+        self.resize_method = None
+        return self
+
+    # @objc_method
+    # def imageWithSize_(self, size: CGSize):
+    #     # self.bounds = size
+    #     return self.resize_method(size)  # type: ignore
+
+    @objc_method
+    def jpegDataWithSize_(self, size: CGSize):
+        # self.bounds = size
+        return self.resize_method(size)  # type: ignore
+
+    @objc_method
+    def set_resize_method(self, resize_method: objc_block):
+        self.resize_method = resize_method
+
 
 class IOSPlayerThread(threading.Thread):
     """A separate thread for music player."""
@@ -129,14 +135,25 @@ class IOSPlayerThread(threading.Thread):
             infos[MPNowPlayingInfoPropertyElapsedPlaybackTime] = self.player.currentTime
             infos[MPMediaItemPropertyPlaybackDuration] = self.player.duration
             infos[MPNowPlayingInfoPropertyPlaybackRate] = self.player.rate
-            # if len(self.mp3.audiofile.tag.images) > 0:  # type: ignore
-            #     # type: ignore
-            #     image_data = self.mp3.audiofile.tag.images[0].image_data
-            # else:
-            #     image_data = Icons.get_app_icon()  # type: ignore
-            # image = ObjCClass("UIImage").imageWithData_(  # type: ignore
-            #     image_data)
-            # infos[MPMediaItemPropertyArtwork] = image
+            if len(self.mp3.audiofile.tag.images) > 0:  # type: ignore
+                image_data = self.mp3.audiofile.tag.images[0].image_data
+            else:
+                image_data = Icons.get_app_icon()  # type: ignore
+
+            artwork = MPMediaItemPropertyArtworkDelegate.alloc().init_()  # type: ignore
+
+            def resize_method(size: CGSize) -> objc_id:
+                from PIL import Image
+                img = Image.open(image_data)
+                img = img.resize((int(size.width), int(size.height)))
+                img_byte_arr = io.BytesIO()
+                img.save(img_byte_arr, format='PNG')
+                img_byte_arr = img_byte_arr.getvalue()
+                image = ObjCClass("UIImage").imageWithData_(  # type: ignore
+                    img_byte_arr)
+                return image  # type: ignore
+            artwork.set_resize_method(resize_method)  # type: ignore
+            infos[MPMediaItemPropertyArtwork] = artwork
 
             playingInfoCenter = MPNowPlayingInfoCenter.defaultCenter()  # type: ignore
             playingInfoCenter.nowPlayingInfo = infos
@@ -144,7 +161,7 @@ class IOSPlayerThread(threading.Thread):
             PlayingThreadGlobals.played_secs = self.player.currentTime
             PlayingThreadGlobals.remained_secs = self.player.duration - self.player.currentTime
             # while success and not stop:
-            while (self.player.isPlaying() and
+            while (self.player and self.player.isPlaying() and
                    PlayingThreadGlobals.status != PlayerStatus.STOP):
                 PlayingThreadGlobals.played_secs = self.player.currentTime
                 PlayingThreadGlobals.remained_secs = self.player.duration - self.player.currentTime
@@ -163,7 +180,6 @@ class IOSPlayerThread(threading.Thread):
                         playingInfoCenter.nowPlayingInfo = infos  # type: ignore
 
             self.player.stop()
-
             if (self.end_callback and
                     PlayingThreadGlobals.status == PlayerStatus.PLAY):
                 self.end_callback()  # type: ignore

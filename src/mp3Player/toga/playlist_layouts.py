@@ -371,11 +371,6 @@ class DesktopPlaylistsListComponent(TogaComponent):
 class CommonPlaylistLayout(TogaStackedLayout):
     def __init__(self, app: TogaMultiLayoutApp, *types):
         super().__init__(app, *types)
-
-        self.message_dialog = toga.InfoDialog(
-            "Alert",
-            ""
-        )
         self.playlist = ""
 
     def show_dialog(self,

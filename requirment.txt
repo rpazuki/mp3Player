@@ -8,4 +8,5 @@ eyed3
 # sudo apt install portaudio19-dev python3-pyaudio
 pyaudio
 pymp3
+pillow
 pyMOSF[beeware]

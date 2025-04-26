@@ -27,6 +27,7 @@ requires = [
    "pyMOSF[release]",
    "eyed3",
    "pymp3",
+   "pillow,
 
 ]
 test_requires = [
