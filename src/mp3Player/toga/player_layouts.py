@@ -125,11 +125,11 @@ class IOSFilesToolbarComponent(TogaComponent):
 
     def add_files(self, selected):
         self.parent_layout.add_files(
-            selected.files, delete_original=False)  # type: ignore
+            selected, delete_original=False)  # type: ignore
 
     def add_files_ios(self, selected):
         self.parent_layout.add_files(
-            selected.files, delete_original=True)  # type: ignore
+            selected, delete_original=True)  # type: ignore
 
     def on_update(self, state: AudioState, audio: Audio, **kwargs):
         match state:
@@ -348,8 +348,6 @@ class IOSFilesListComponent(TogaComponent):
                                              on_select=self.on_select,
                                              on_primary_action=self.primary_action,
                                              primary_action="Delete",
-                                             on_secondary_action=self.secondary_action,
-                                             secondary_action="Cancel",
                                              )
         super().__init__(layout, style=Pack(padding=10, flex=1),
                          children=[self.__playlists])
@@ -413,10 +411,6 @@ class IOSFilesListComponent(TogaComponent):
 
     def primary_action(self, widget, row, **kwargs):
         self.parent_layout.remove_file()  # type: ignore
-
-    def secondary_action(self, widget, row, **kwargs):
-        # This method just causes the context menu to be closed
-        pass
 
     def previous_index(self, index):
         # Find the previous node in the list

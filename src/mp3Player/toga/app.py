@@ -9,7 +9,7 @@ from pyMOSF.toga import TogaMultiLayoutApp
 from mp3Player.services import PlayerStatus, PlayingThreadGlobals
 from mp3Player.toga.configs import Settings
 from mp3Player.toga.player_layouts import DesktopPlayerLayout, IOSPlayerLayout
-from mp3Player.toga.playlist_layouts import DesktopPlaylistLayout, IOSPlaylistLayout
+from mp3Player.toga.playlist_layouts import DesktopPlaylistLayout, IOSPlaylistLayout, PlaylistState
 
 log = logging.getLogger(__name__)
 
@@ -50,6 +50,9 @@ class TogaApp(TogaMultiLayoutApp):
         if (self.settings.last_playlist_private != "" and
                 self.settings.find_playlist(self.settings.last_playlist_private)):
             self.show_player(self.settings.last_playlist_private)
+        else:
+            self.playlist_layout.on_update(state=PlaylistState.LOADING,
+                                           playlist_name=self.playlist_layout.playlist)
 
     def show_player(self, playlist_name):
         self.player_layout.audio.playlist_name = playlist_name

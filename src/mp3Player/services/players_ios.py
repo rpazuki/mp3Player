@@ -4,8 +4,16 @@ import logging
 import threading
 import time
 
-from rubicon.objc import NSMutableDictionary, ObjCClass, objc_const
+from rubicon.objc import (
+    NSMutableDictionary,
+    ObjCProtocol,
+    ObjCClass,
+    objc_method,
+    objc_property,
+    objc_const
+)
 from rubicon.objc.runtime import load_library, objc_id
+from rubicon.objc.types import CGSize
 
 from mp3Player.icons import Icons
 from mp3Player.services.players_core import PlayerStatus, PlayingThreadGlobals
@@ -23,11 +31,12 @@ MPRemoteCommandEvent = ObjCClass("MPRemoteCommandEvent")
 MPRemoteCommand = ObjCClass("MPRemoteCommand")
 AVAudioPlayer = ObjCClass('AVAudioPlayer')
 AVAudioSession = ObjCClass('AVAudioSession')
+NSObject = ObjCClass('NSObject')
 NSURL = ObjCClass('NSURL')
 MPNowPlayingInfoCenter = ObjCClass(
     'MPNowPlayingInfoCenter')  # type: ignore
 MPRemoteCommandCenter = ObjCClass('MPRemoteCommandCenter')
-
+# MPMediaItemArtwork = ObjCProtocol("MPMediaItemArtwork")
 
 AVAudioSessionCategoryPlayback = objc_const(avfAudio_lib,
                                             "AVAudioSessionCategoryPlayback")
@@ -43,6 +52,26 @@ MPNowPlayingInfoPropertyPlaybackRate = objc_const(libmp,
 MPMediaItemPropertyArtwork = objc_const(libmp,
                                         "MPMediaItemPropertyArtwork")
 
+# class MPMediaItemPropertyArtworkDelegate(NSObject,
+#                                          protocols=[MPMediaItemArtwork]):
+    
+#     bounds = objc_property()
+#     @objc_method
+#     def init_(self):
+#         self = self.init()
+#         if self is None:
+#             return None
+#         self.image = None
+#         return self
+
+#     @objc_method
+#     def imageWithSize_size(self, size: CGSize):
+#         self.bounds = size
+#         return self.image
+
+#     @objc_method
+#     def set_image(self, image: objc_id):
+#         self.image = image
 
 class IOSPlayerThread(threading.Thread):
     """A separate thread for music player."""
@@ -100,17 +129,17 @@ class IOSPlayerThread(threading.Thread):
             infos[MPNowPlayingInfoPropertyElapsedPlaybackTime] = self.player.currentTime
             infos[MPMediaItemPropertyPlaybackDuration] = self.player.duration
             infos[MPNowPlayingInfoPropertyPlaybackRate] = self.player.rate
-            if len(self.mp3.audiofile.tag.images) > 0:  # type: ignore
-                # type: ignore
-                image_data = self.mp3.audiofile.tag.images[0].image_data
-            else:
-                image_data = Icons.get_app_icon()  # type: ignore
-            image = ObjCClass("UIImage").imageWithData_(  # type: ignore
-                image_data)
-            infos[MPMediaItemPropertyArtwork] = image
+            # if len(self.mp3.audiofile.tag.images) > 0:  # type: ignore
+            #     # type: ignore
+            #     image_data = self.mp3.audiofile.tag.images[0].image_data
+            # else:
+            #     image_data = Icons.get_app_icon()  # type: ignore
+            # image = ObjCClass("UIImage").imageWithData_(  # type: ignore
+            #     image_data)
+            # infos[MPMediaItemPropertyArtwork] = image
 
-            playiingInfoCenter = MPNowPlayingInfoCenter.defaultCenter()  # type: ignore
-            playiingInfoCenter.nowPlayingInfo = infos
+            playingInfoCenter = MPNowPlayingInfoCenter.defaultCenter()  # type: ignore
+            playingInfoCenter.nowPlayingInfo = infos
             #
             PlayingThreadGlobals.played_secs = self.player.currentTime
             PlayingThreadGlobals.remained_secs = self.player.duration - self.player.currentTime
@@ -120,18 +149,18 @@ class IOSPlayerThread(threading.Thread):
                 PlayingThreadGlobals.played_secs = self.player.currentTime
                 PlayingThreadGlobals.remained_secs = self.player.duration - self.player.currentTime
                 infos[MPNowPlayingInfoPropertyElapsedPlaybackTime] = self.player.currentTime
-                playiingInfoCenter.nowPlayingInfo = infos  # type: ignore
+                playingInfoCenter.nowPlayingInfo = infos  # type: ignore
                 time.sleep(0.1)
 
                 while PlayingThreadGlobals.status == PlayerStatus.PAUSE:
                     self.player.pause()
                     infos[MPNowPlayingInfoPropertyPlaybackRate] = 0
-                    playiingInfoCenter.nowPlayingInfo = infos  # type: ignore
+                    playingInfoCenter.nowPlayingInfo = infos  # type: ignore
                     time.sleep(0.1)
                     if PlayingThreadGlobals.status != PlayerStatus.PAUSE:
                         self.player.play()
                         infos[MPNowPlayingInfoPropertyPlaybackRate] = 1
-                        playiingInfoCenter.nowPlayingInfo = infos  # type: ignore
+                        playingInfoCenter.nowPlayingInfo = infos  # type: ignore
 
             self.player.stop()
 
