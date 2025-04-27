@@ -271,9 +271,11 @@ class IOSPlaylistsListComponent(TogaComponent):
         self._internal_update = False
 
     def remove_action(self, widget, row, **kwargs):
+        self._selected_index = row.index
         self.parent_layout.remove_playlist()  # type: ignore
 
     def edit_action(self, widget, row, **kwargs):
+        self._selected_index = row.index
         self.parent_layout.show_edit_playlist()  # type: ignore
 
     def on_update(self, state: PlaylistState, playlist_name: str, **kwargs):
@@ -284,11 +286,12 @@ class IOSPlaylistsListComponent(TogaComponent):
         #
         self._internal_update = True
         self.playlists_list.data.clear()
-        for playlist in self.ml_app.settings.Playlists:
+        for i, playlist in enumerate(self.ml_app.settings.Playlists):
             self.playlists_list.data.append({
                 "picture": Icons.load().address_book,
                 "name": playlist.name,  # type: ignore
                 "file_number": len(playlist.tracks),  # type: ignore
+                "index": i
             })
         self._internal_update = False
 
