@@ -430,7 +430,8 @@ class IOSFilesListComponent(TogaComponent):
                     "length": track.length,
                     "playlist": playlist.name,
                     "index": i})
-            self.playlists_list.scroll_to_row(audio.index)
+            if audio.index < len(playlist.tracks):
+                self.playlists_list.scroll_to_row(audio.index)
             self._internal_update = False
 
         self.promise(later)
@@ -548,6 +549,8 @@ class DesktopFilesListComponent(TogaComponent):
                 "length": track.length,
                 "playlist": playlist.name,
                 "index": i})
+        if audio.index < len(playlist.tracks):
+                self.playlists_list.scroll_to_row(audio.index)
         self._internal_update = False
 
     def _icon(self, state: AudioState):
