@@ -4,23 +4,25 @@ import io
 import logging
 import threading
 import time
-from ctypes import c_void_p
 
-from rubicon.objc import (
+from rubicon.objc import (  # Block, at,
     NSMutableDictionary,
     ObjCClass,
     objc_block,
     objc_const,
     objc_method,
-    Block,
-    at
 )
-from rubicon.objc.types import encoding_for_ctype, ctype_for_encoding
 from rubicon.objc.runtime import load_library, objc_id
 from rubicon.objc.types import CGSize
 
-from mp3Player.icons import Icons
+# from mp3Player.icons import Icons
 from mp3Player.services.players_core import PlayerStatus, PlayingThreadGlobals
+
+# , ctype_for_encoding, encoding_for_ctype
+
+
+# from ctypes import c_void_p
+
 
 log = logging.getLogger(__name__)
 
@@ -76,12 +78,12 @@ class MPMediaItemPropertyArtworkDelegate(NSObject):  # type: ignore
         # self.bounds = size
         return self.resize_method(size)  # type: ignore
 
-    @objc_method
-    def jpegDataWithSize_(self, size: CGSize):
-        # self.bounds = size
-        #message = NSString.stringWithString_("jpegDataWithSize_ is called")
-        NSLog("jpegDataWithSize_ is called")
-        return self.resize_method(size)  # type: ignore
+    # @objc_method
+    # def jpegDataWithSize_(self, size: CGSize):
+    #     # self.bounds = size
+    #     #message = NSString.stringWithString_("jpegDataWithSize_ is called")
+    #     NSLog("jpegDataWithSize_ is called")
+    #     return self.resize_method(size)  # type: ignore
 
     @objc_method
     def set_resize_method(self, resize_method: objc_block):
@@ -95,30 +97,32 @@ class IOSPlayerThread(threading.Thread):
     def __init__(self, mp3, end_callback=None):
         threading.Thread.__init__(self)
         self.mp3 = mp3
-        # self.decoder = mp3.decoder()
         self.end_callback = end_callback
         self.player = None
         self.image_data = None
         #
-    
+
     def resize_method_(self, size: CGSize) -> objc_id:
-        from PIL import Image
         from io import BytesIO
 
-        img = Image.open(BytesIO(self.image_data))
+        from PIL import Image
+
+        img = Image.open(BytesIO(self.image_data))  # type: ignore
         img = img.resize((int(size.width), int(size.height)))
         img_byte_arr = io.BytesIO()
         img.save(img_byte_arr, format='PNG')
         img_byte_arr = img_byte_arr.getvalue()
-        #image = ObjCClass("UIImage").imageWithData_(  # type: ignore
+        # image = ObjCClass("UIImage").imageWithData_(  # type: ignore
         #    img_byte_arr)
-        #image = ObjCClass("UIImage").alloc().initWithData_(  # type: ignore
+        # image = ObjCClass("UIImage").alloc().initWithData_(  # type: ignore
         #    img_byte_arr)
         UIImage = ObjCClass("UIImage")
-        nsdata = ObjCClass("NSData").dataWithBytes_length_(img_byte_arr, len(img_byte_arr))
-        ui_image = UIImage.alloc().initWithData_(nsdata)
-        
-        return ui_image.ptr # type: ignore
+        nsdata = ObjCClass("NSData").dataWithBytes_length_(  # type: ignore
+            img_byte_arr, len(img_byte_arr))
+        ui_image = UIImage.alloc().initWithData_(nsdata)  # type: ignore
+
+        return ui_image.ptr  # type: ignore
+
     def run(self):
         """
         Executes the audio playback process using the decoder and PyAudio.
@@ -163,20 +167,19 @@ class IOSPlayerThread(threading.Thread):
             infos[MPNowPlayingInfoPropertyElapsedPlaybackTime] = self.player.currentTime
             infos[MPMediaItemPropertyPlaybackDuration] = self.player.duration
             infos[MPNowPlayingInfoPropertyPlaybackRate] = self.player.rate
-            #if len(self.mp3.audiofile.tag.images) > 0:  # type: ignore
+            # if len(self.mp3.audiofile.tag.images) > 0:  # type: ignore
             #    self.image_data = self.mp3.audiofile.tag.images[0].image_data
-            #else:
+            # else:
             #    self.image_data = Icons.get_app_icon()  # type: ignore
 
-            
-            #image = ObjCClass("UIImage").imageWithData_(  # type: ignore
+            # image = ObjCClass("UIImage").imageWithData_(  # type: ignore
             #                        self.image_data)
-            #artwork = ObjCClass("MPMediaItemArtwork").alloc()
-            #artwork = artwork.initWithBoundsSize_requestHandler_(
+            # artwork = ObjCClass("MPMediaItemArtwork").alloc()
+            # artwork = artwork.initWithBoundsSize_requestHandler_(
             #  image.size,
             #  self.resize_method_
-            #)
-            #infos[MPMediaItemPropertyArtwork] = artwork
+            # )
+            # infos[MPMediaItemPropertyArtwork] = artwork
 
             playingInfoCenter = MPNowPlayingInfoCenter.defaultCenter()  # type: ignore
             playingInfoCenter.nowPlayingInfo = infos

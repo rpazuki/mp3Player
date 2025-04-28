@@ -7,7 +7,8 @@ import platform
 from pyMOSF.toga import TogaMultiLayoutApp
 
 from mp3Player.toga.configs import Settings
-from mp3Player.toga.player_layouts import DesktopPlayerLayout, IOSPlayerLayout
+from mp3Player.toga.player_layouts_desktop import DesktopPlayerLayout
+from mp3Player.toga.player_layouts_ios import IOSPlayerLayout
 from mp3Player.toga.playlist_layouts import (
     DesktopPlaylistLayout,
     IOSPlaylistLayout,
