@@ -11,7 +11,7 @@ author_email = "rpazuki@gmail.com"
 [tool.briefcase.app.mp3Player]
 formal_name = "mp3Player"
 description = "mp3 player"
-long_description = """An mp3 player with multiple playlists support.
+long_description = """An offline mp3 player with multiple playlists support.
 """
 # from: https://www.iconarchive.com/show/nuoveXT-2-icons-by-saki.1.html
 icon = "src/icons/mp3Player"
