@@ -9,11 +9,11 @@ from pyMOSF.toga import TogaMultiLayoutApp
 from mp3Player.toga.configs import Settings
 from mp3Player.toga.player_layouts_desktop import DesktopPlayerLayout
 from mp3Player.toga.player_layouts_ios import IOSPlayerLayout
-from mp3Player.toga.playlist_layouts import (
-    DesktopPlaylistLayout,
-    IOSPlaylistLayout,
-    PlaylistState,
-)
+from mp3Player.toga.player_layouts_macos import MacOSPlayerLayout
+from mp3Player.toga.playlist_layouts import PlaylistState
+from mp3Player.toga.playlist_layouts_desktop import DesktopPlaylistLayout
+from mp3Player.toga.playlist_layouts_ios import IOSPlaylistLayout
+from mp3Player.toga.playlist_layouts_macos import MacOSPlaylistLayout
 
 log = logging.getLogger(__name__)
 
@@ -39,8 +39,10 @@ class TogaApp(TogaMultiLayoutApp):
     def _new_player_layout(self):
         os = self._get_platform()
         match os:
-            case "linux" | "darwin" | "windows":
+            case "linux" | "windows":
                 return DesktopPlayerLayout(self)
+            case "darwin":
+                return MacOSPlayerLayout(self)
             case "ios" | "ipados":
                 return IOSPlayerLayout(self)
             case _:
@@ -49,8 +51,10 @@ class TogaApp(TogaMultiLayoutApp):
     def _new_playlist_layout(self):
         os = self._get_platform()
         match os:
-            case "linux" | "darwin" | "windows":
+            case "linux" | "windows":
                 return DesktopPlaylistLayout(self)
+            case "darwin":
+                return MacOSPlaylistLayout(self)
             case "ios" | "ipados":
                 return IOSPlaylistLayout(self)
             case _:
