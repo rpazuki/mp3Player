@@ -45,12 +45,8 @@ requires = [
 # An override of the common definition for camera permissions
 permission.camera = "This macOS app uses the camera."
 permission.photos_library = "This macOS app uses photos."
-entitlements_plist_extra = """
-	<key>com.apple.security.device.camera</key>
-	<true/>
-    <key>com.apple.security.personal-information.photos-library</key>
-	<true/>
-"""
+entitlement."com.apple.security.app-sandbox" =  true
+
 info_plist_extra = """
 	<key>NSCameraUsageDescription</key>
 	<string>This iOS app uses the camera</string>
@@ -63,6 +59,11 @@ info_plist_extra = """
 		<string>audio</string>
 	</array>
 """
+[tool.briefcase.app.mp3Player.macOS.info]
+CFBundleVersion =  "0.1.0"
+LSApplicationCategoryType = "public.app-category.music"
+
+
 ##################################################################
 ##################################################################
 [tool.briefcase.app.mp3Player.linux]
