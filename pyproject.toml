@@ -2,7 +2,7 @@
 [tool.briefcase]
 project_name = "mp3Player"
 bundle = "net.pazuki.mp3Player"
-version = "0.0.1"
+version = "0.1.0"
 url = "https://pazuki.net/mp3Player"
 license.file = "LICENSE"
 author = "Roozbeh H. Pazuki"

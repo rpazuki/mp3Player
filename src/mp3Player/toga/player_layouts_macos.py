@@ -43,26 +43,14 @@ class MacOSFilesToolbarComponent(TogaComponent):
         ])
         self.add_btn = self.children[1]
         self.remove_btn = self.children[2]
+       
 
     @property
     def parent_layout(self) -> MacOSPlayerLayout:
         return self._layout  # type: ignore
 
-    def on_linux_config(self):
-        ServiceRegistry().bind_event(Event("add_file",
-                                           EventType.ON_PRESS,
-                                           FileOpen(file_types=["mp3"],
-                                                    multiple_select=True),
-                                           service_callback=self.add_files))
 
     def on_darwin_config(self):
-        ServiceRegistry().bind_event(Event("add_file",
-                                           EventType.ON_PRESS,
-                                           FileOpen(file_types=["mp3"],
-                                                    multiple_select=True),
-                                           service_callback=self.add_files))
-
-    def on_windows_config(self):
         ServiceRegistry().bind_event(Event("add_file",
                                            EventType.ON_PRESS,
                                            FileOpen(file_types=["mp3"],
@@ -96,9 +84,6 @@ class MacOSFilesToolbarComponent(TogaComponent):
 
 
 class MacOSFilesListComponent(CommonFilesListComponent):
-    def __init__(self, layout: TogaStackedLayout, **kwargs) -> None:
-        super().__init__(layout, **kwargs)
-        self._previous_selected_index = -1
 
     def on_select(self, widget):
         if self._internal_update:
@@ -112,17 +97,11 @@ class MacOSFilesListComponent(CommonFilesListComponent):
             self._internal_update = False
             return
 
-        # Double click
-        if self._selected_index == self._previous_selected_index:
+        if (self.audio_state != AudioState.PLAYING and
+              self.audio_state != AudioState.PAUSED):
+            self.parent_layout.audio_selected()  # type: ignore
+        else:
             self.parent_layout.play()  # type: ignore
-            self._previous_selected_index = -1
-        else:  # Single click (although it is called before double click too)
-            self._previous_selected_index = self._selected_index
-            # To update the toolbar state
-            if (self.audio_state != AudioState.PLAYING and
-                    self.audio_state != AudioState.PAUSED):
-                self.parent_layout.audio_selected()  # type: ignore
-
         self._internal_update = False
 
     def on_update(self, state: AudioState, audio: Audio, **kwargs):
@@ -130,23 +109,23 @@ class MacOSFilesListComponent(CommonFilesListComponent):
         if audio.playlist_name == "":
             return
 
-        if state == AudioState.SELECTING:
-            return
+        def later():
+            self._internal_update = True
+            playlist = self.ml_app.settings.find_playlist(audio.playlist_name)
+            self._internal_update = True
+            self.playlists_list.data.clear()
+            for i, track in enumerate(playlist.tracks):
+                self.playlists_list.data.append({
+                    "icon": Icons.load().note if i != audio.index else self._icon(state),
+                    "name": track.name,
+                    "length": track.length,
+                    "playlist": playlist.name,
+                    "index": i})
+            if audio.index < len(playlist.tracks):
+                self.playlists_list.scroll_to_row(audio.index)
+            self._internal_update = False
 
-        log.info(f"on_update: {state} {audio.playlist_name}")
-        playlist = self.ml_app.settings.find_playlist(audio.playlist_name)
-        self._internal_update = True
-        self.playlists_list.data.clear()
-        for i, track in enumerate(playlist.tracks):
-            self.playlists_list.data.append({
-                "icon": Icons.load().note if i != audio.index else self._icon(state),
-                "name": track.name,
-                "length": track.length,
-                "playlist": playlist.name,
-                "index": i})
-        if audio.index < len(playlist.tracks):
-            self.playlists_list.scroll_to_row(audio.index)
-        self._internal_update = False
+        self.promise(later)
 
 
 class MacOSPlayerLayout(CommonPlayerLayout):
@@ -169,12 +148,6 @@ class MacOSPlayerLayout(CommonPlayerLayout):
         return PlayerThread(
             mp3_file,
             end_callback)
-
-    def on_linux_config(self):
-        self.player_thread_factory = self.player_factory
-
-    def on_windows_config(self):
-        self.player_thread_factory = self.player_factory
 
     def on_darwin_config(self):
         self.player_thread_factory = self.player_factory

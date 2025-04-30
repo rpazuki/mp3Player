@@ -88,12 +88,14 @@ class DesktopPlaylistToolbarComponent(CommonPlaylistToolbarComponent):
                 self.btn_add_playlist.enabled = False
                 self.btn_remove_playlist.enabled = False
                 self.btn_edit_playlist.enabled = False
+                self.playlist_textbox.focus()
             case PlaylistState.EDITING:
                 self.toolbar_box.add(self.edit_box)
                 self.btn_add_playlist.enabled = False
                 self.btn_remove_playlist.enabled = False
                 self.btn_edit_playlist.enabled = False
                 self.playlist_textbox.value = playlist_name.strip()
+                self.playlist_textbox.focus()
             case PlaylistState.SELECTING:
                 self.btn_add_playlist.enabled = True
                 self.btn_remove_playlist.enabled = True

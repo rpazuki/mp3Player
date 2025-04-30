@@ -55,12 +55,6 @@ class DesktopFilesToolbarComponent(TogaComponent):
                                                     multiple_select=True),
                                            service_callback=self.add_files))
 
-    def on_darwin_config(self):
-        ServiceRegistry().bind_event(Event("add_file",
-                                           EventType.ON_PRESS,
-                                           FileOpen(file_types=["mp3"],
-                                                    multiple_select=True),
-                                           service_callback=self.add_files))
 
     def on_windows_config(self):
         ServiceRegistry().bind_event(Event("add_file",
@@ -176,5 +170,3 @@ class DesktopPlayerLayout(CommonPlayerLayout):
     def on_windows_config(self):
         self.player_thread_factory = self.player_factory
 
-    def on_darwin_config(self):
-        self.player_thread_factory = self.player_factory

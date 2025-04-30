@@ -88,12 +88,14 @@ class MacOSPlaylistToolbarComponent(CommonPlaylistToolbarComponent):
                 self.btn_add_playlist.enabled = False
                 self.btn_remove_playlist.enabled = False
                 self.btn_edit_playlist.enabled = False
+                self.playlist_textbox.focus()
             case PlaylistState.EDITING:
                 self.toolbar_box.add(self.edit_box)
                 self.btn_add_playlist.enabled = False
                 self.btn_remove_playlist.enabled = False
                 self.btn_edit_playlist.enabled = False
                 self.playlist_textbox.value = playlist_name.strip()
+                self.playlist_textbox.focus()
             case PlaylistState.SELECTING:
                 self.btn_add_playlist.enabled = True
                 self.btn_remove_playlist.enabled = True
@@ -109,7 +111,6 @@ class MacOSPlaylistsListComponent(TogaComponent):
         super().__init__(layout, style=Pack(padding=10, flex=1),
                          children=[self.__playlists])
         self._selected_index = -1
-        self._previous_selected_index = -1
         self._internal_update = False
         self.playlist_state = PlaylistState.LOADING
 
@@ -147,32 +148,38 @@ class MacOSPlaylistsListComponent(TogaComponent):
     def on_select(self, widget):
         if self._internal_update:
             return
-        node: Source_ROW | None = self.playlists_list.selection
-        self._selected_index = self.playlists_list.data.index(
-            node) if node is not None else -1
+        
+        match self.playlist_state:
+            case PlaylistState.ADDING | PlaylistState.EDITING:
+                self.parent_layout.cancel_playlist()
+            case _:
+                node: Source_ROW | None = self.playlists_list.selection
+                self._selected_index = self.playlists_list.data.index(
+                    node) if node is not None else -1
 
-        if self._selected_index == -1:
-            return
+                if self._selected_index == -1:
+                    return
 
-        if self._selected_index == self._previous_selected_index:
-            self._previous_selected_index = -1
-            self.parent_layout.view_play_deck()  # type: ignore
-        else:
-            self._previous_selected_index = self._selected_index
-            self.parent_layout.playlist_selected()  # type: ignore
+                self.parent_layout.playlist_selected()  # type: ignore
 
     def on_update(self, state: PlaylistState, playlist_name: str, **kwargs):
         self.playlist_state = state
         #
-        self._internal_update = True
-        self.playlists_list.data.clear()
-        for playlist in self.ml_app.settings.Playlists:
-            self.playlists_list.data.append({
-                "picture": Icons.load().address_book,
-                "name": playlist.name,  # type: ignore
-                "file_number": len(playlist.tracks),  # type: ignore
-            })
-        self._internal_update = False
+        match state:
+            case PlaylistState.ADDING | PlaylistState.EDITING:
+                pass
+            case _:
+                self.playlists_list.enabled = True
+                # 
+                self._internal_update = True
+                self.playlists_list.data.clear()
+                for playlist in self.ml_app.settings.Playlists:
+                    self.playlists_list.data.append({
+                        "picture": Icons.load().address_book,
+                        "name": playlist.name,  # type: ignore
+                        "file_number": len(playlist.tracks),  # type: ignore
+                    })
+                self._internal_update = False
 
 
 class MacOSPlaylistLayout(CommonPlaylistLayout):
