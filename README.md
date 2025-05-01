@@ -81,19 +81,6 @@ for iOS, use
 ```
 briefcase create iOS
 briefcase build iOS
-
-rm ./build/mp3Player/ios/xcode/Support/Python.xcframework/ios-arm64/lib/python3.13/lib-dynload/_hashlib.cpython-313-iphoneos.so
-rm ./build/mp3Player/ios/xcode/Support/Python.xcframework/ios-arm64/lib/python3.13/lib-dynload/_ssl.cpython-313-iphoneos.so
-
-rm ./build/mp3Player/ios/xcode/Support/Python.xcframework/ios-arm64_x86_64-simulator/lib/python3.13/lib-dynload/_hashlib.cpython-313-iphoneos.so
-rm ./build/mp3Player/ios/xcode/Support/Python.xcframework/ios-arm64_x86_64-simulator/lib/python3.13/lib-dynload/_ssl.cpython-313-iphoneos.so
-
-rm ./build/mp3Player/ios/xcode/Support/Python.xcframework/iphoneos/lib/python3.13/lib-dynload/_hashlib.cpython-313-iphoneos.so
-rm ./build/mp3Player/ios/xcode/Support/Python.xcframework/iphoneos/lib/python3.13/lib-dynload/_ssl.cpython-313-iphoneos.so
-
-rm ./build/mp3Player/ios/xcode/Support/Python.xcframework/iphonesimulator/lib/python3.13/lib-dynload/_hashlib.cpython-313-iphoneos.so
-rm ./build/mp3Player/ios/xcode/Support/Python.xcframework/iphonesimulator/lib/python3.13/lib-dynload/_ssl.cpython-313-iphoneos.so
-
 ```
-(make sure to use correct python version for both the directory name and the so file) Next, you can open the Xcode project in "./build/mp3Player/ios/xcode" folder.
+Next, you can open the Xcode project in "./build/mp3Player/ios/xcode" folder.
 

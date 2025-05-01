@@ -22,7 +22,16 @@ sources = [
 test_sources = [
     "tests",
 ]
-
+cleanup_paths = [
+    "**/test",
+    "**/test_*",
+    "**/urllib/error.py",
+    "**/urllib/request.py",
+    "**/urllib/response.py",
+    "**/urllib/robotparser.py",
+    "**/_hashlib.*.so",
+    "**/_ssl.*.so",
+]
 requires = [
    "pyMOSF[release]",
    "eyed3",
@@ -199,8 +208,9 @@ requires = [
     "rubicon-objc",
 ]
 requirement_installer_args = ["--find-links", "/Users/roozbeh/ios_libs/mobile-forge/dist/"]
-[tool.briefcase.app.mp3Player.iOS.info]
-UIBackgroundModes =  ["audio"]
+#[tool.briefcase.app.mp3Player.iOS.info]
+info."UIBackgroundModes" =  ["audio"]
+info."LSApplicationCategoryType" = "public.app-category.music"
 ##################################################################
 ##################################################################
 [tool.briefcase.app.mp3Player.android]
